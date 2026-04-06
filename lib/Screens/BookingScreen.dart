@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:s_a/const/color/colors.dart';
 
 // ─── App Colors ───────────────────────────────────────────────────────────────
-// Replace with your actual import: import 'package:s_a/const/color/colors.dart';
+// Note: If using your actual project, use: import 'package:s_a/const/color/colors.dart';
+
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 enum BookingStatus { upcoming, previous, cancelled }
@@ -31,11 +32,11 @@ class Booking {
 const List<Booking> _sampleBookings = [
   Booking(
     id: '1',
-    date: '25th\nDec. Wednesday',
-    serviceName: 'Plumbing',
-    description: 'Pipe repair',
-    timeSlot: '10:00 AM – 12:00 PM',
-    amount: 499.0,
+    date: '12th\nApr. Sunday',
+    serviceName: 'Diamond Facial',
+    description: 'Skin treatment',
+    timeSlot: '07:30 PM',
+    amount: 1499.0,
     status: BookingStatus.upcoming,
   ),
   Booking(
@@ -56,16 +57,83 @@ const List<Booking> _sampleBookings = [
     amount: 599.0,
     status: BookingStatus.previous,
   ),
-  Booking(
-    id: '4',
-    date: '5th\nNov. Sunday',
-    serviceName: 'Deep Cleaning',
-    description: 'Full home clean',
-    timeSlot: '8:00 AM – 1:00 PM',
-    amount: 1199.0,
-    status: BookingStatus.previous,
-  ),
 ];
+
+// ─── Reschedule Success Dialog (Matches Image) ────────────────────────────────
+void _showSuccessDialog(BuildContext context, String service, String date, String time) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Circular Checkmark Icon
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: Color(0xFFECEFF1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check, size: 60, color: AppColors.primary),
+            ),
+            const SizedBox(height: 24),
+            // Header
+            const Text(
+              'Booking Rescheduled!',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Body Text with Bold highlights
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: const TextStyle(fontSize: 16, color: Colors.black87, height: 1.5),
+                children: [
+                  const TextSpan(text: 'Dear Manvi you have successfully re-scheduled your booking of '),
+                  TextSpan(
+                    text: '$service ',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const TextSpan(text: 'for the new date '),
+                  TextSpan(
+                    text: '$date at $time',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const TextSpan(text: '\nOur service provider will contact you soon.'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 30),
+            // Close Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx); // Close Dialog
+                  Navigator.pop(context); // Return to list
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Done', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
 // ─── Booking Screen ───────────────────────────────────────────────────────────
 class BookingScreen extends StatelessWidget {
@@ -75,44 +143,30 @@ class BookingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
-      initialIndex: 1,
+      initialIndex: 0,
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
           automaticallyImplyLeading: false,
           backgroundColor: Colors.white,
           elevation: 0,
-          toolbarHeight: 20,
           bottom: const TabBar(
             indicatorColor: AppColors.primary,
             indicatorWeight: 4,
-            indicatorSize: TabBarIndicatorSize.tab,
             labelColor: AppColors.primary,
             unselectedLabelColor: Colors.grey,
             labelStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            tabs: [
-              Tab(text: 'Upcoming'),
-              Tab(text: 'Previous'),
-            ],
+            tabs: [Tab(text: 'Upcoming'), Tab(text: 'Previous')],
           ),
         ),
         body: TabBarView(
           children: [
-            // ── Upcoming Tab ──────────────────────────────────────────────
             _BookingList(
-              bookings: _sampleBookings
-                  .where((b) => b.status == BookingStatus.upcoming)
-                  .toList(),
-              emptyMessage: 'No upcoming bookings',
+              bookings: _sampleBookings.where((b) => b.status == BookingStatus.upcoming).toList(),
               isUpcoming: true,
             ),
-
-            // ── Previous Tab ──────────────────────────────────────────────
             _BookingList(
-              bookings: _sampleBookings
-                  .where((b) => b.status == BookingStatus.previous)
-                  .toList(),
-              emptyMessage: 'No previous bookings',
+              bookings: _sampleBookings.where((b) => b.status == BookingStatus.previous).toList(),
               isUpcoming: false,
             ),
           ],
@@ -122,48 +176,20 @@ class BookingScreen extends StatelessWidget {
   }
 }
 
-// ─── Booking List ─────────────────────────────────────────────────────────────
 class _BookingList extends StatelessWidget {
   final List<Booking> bookings;
-  final String emptyMessage;
   final bool isUpcoming;
 
-  const _BookingList({
-    required this.bookings,
-    required this.emptyMessage,
-    required this.isUpcoming,
-  });
+  const _BookingList({required this.bookings, required this.isUpcoming});
 
   @override
   Widget build(BuildContext context) {
-    if (bookings.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isUpcoming ? Icons.calendar_today_outlined : Icons.history,
-              size: 64,
-              color: Colors.grey.shade300,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              emptyMessage,
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
-            ),
-          ],
-        ),
-      );
-    }
-
+    if (bookings.isEmpty) return const Center(child: Text('No bookings found'));
     return ListView.separated(
       padding: const EdgeInsets.all(20),
       itemCount: bookings.length,
       separatorBuilder: (_, __) => const SizedBox(height: 16),
-      itemBuilder: (context, index) => BookingCard(
-        booking: bookings[index],
-        isUpcoming: isUpcoming,
-      ),
+      itemBuilder: (context, index) => BookingCard(booking: bookings[index], isUpcoming: isUpcoming),
     );
   }
 }
@@ -173,328 +199,51 @@ class BookingCard extends StatelessWidget {
   final Booking booking;
   final bool isUpcoming;
 
-  const BookingCard({
-    super.key,
-    required this.booking,
-    required this.isUpcoming,
-  });
+  const BookingCard({super.key, required this.booking, required this.isUpcoming});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8EAF6),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header Row ──────────────────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Date + description
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    booking.date,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Icon(Icons.circle, size: 6, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Text(
-                        booking.description,
-                        style:
-                        const TextStyle(color: Colors.grey, fontSize: 16),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time,
-                          size: 14, color: Colors.grey),
-                      const SizedBox(width: 6),
-                      Text(
-                        booking.timeSlot,
-                        style:
-                        const TextStyle(color: Colors.grey, fontSize: 13),
-                      ),
-                    ],
-                  ),
+                  Text(booking.date, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text(booking.description, style: const TextStyle(color: Colors.grey)),
                 ],
               ),
-
-              // Service name + amount
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    booking.serviceName,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '₹${booking.amount.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
+              Text(booking.serviceName, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
             ],
           ),
-
-          const SizedBox(height: 25),
-
-          // ── Action Buttons ───────────────────────────────────────────────
+          const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              if (isUpcoming) ...[
-                // Cancel button for upcoming
+              if (isUpcoming)
                 ElevatedButton(
-                  onPressed: () => _onCancel(context),
+                  onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      side: const BorderSide(color: AppColors.primary),
-                    ),
-                    elevation: 0,
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: const Text(
-                    'Cancel Booking',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  child: const Text('Cancel Booking', style: TextStyle(color: AppColors.primary)),
                 ),
-              ] else ...[
-                // Feedback button for previous
-                ElevatedButton(
-                  onPressed: () => _onFeedback(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Share Feedback',
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-
-              // View Details (both tabs)
               TextButton(
-                onPressed: () => _onViewDetails(context),
-                child: const Text(
-                  'View details',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => BookingDetailScreen(booking: booking)));
+                },
+                child: const Text('View details', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Handlers ────────────────────────────────────────────────────────────────
-  void _onCancel(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Cancel Booking'),
-        content: Text(
-            'Are you sure you want to cancel your ${booking.serviceName} booking?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('No')),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Booking cancelled')),
-              );
-            },
-            child: const Text('Yes, Cancel',
-                style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _onFeedback(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _FeedbackSheet(booking: booking),
-    );
-  }
-
-  void _onViewDetails(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => BookingDetailScreen(booking: booking),
-      ),
-    );
-  }
-}
-
-// ─── Feedback Bottom Sheet ────────────────────────────────────────────────────
-class _FeedbackSheet extends StatefulWidget {
-  final Booking booking;
-  const _FeedbackSheet({required this.booking});
-
-  @override
-  State<_FeedbackSheet> createState() => _FeedbackSheetState();
-}
-
-class _FeedbackSheetState extends State<_FeedbackSheet> {
-  int _rating = 0;
-  final TextEditingController _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          Text(
-            'Rate your ${widget.booking.serviceName}',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            widget.booking.date.replaceAll('\n', ' '),
-            style: const TextStyle(color: Colors.grey, fontSize: 14),
-          ),
-          const SizedBox(height: 20),
-
-          // Star rating
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (i) {
-              final star = i + 1;
-              return GestureDetector(
-                onTap: () => setState(() => _rating = star),
-                child: Icon(
-                  star <= _rating ? Icons.star : Icons.star_border,
-                  color: star <= _rating ? Colors.amber : Colors.grey,
-                  size: 40,
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 20),
-
-          TextField(
-            controller: _controller,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: 'Write your comments here…',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primary),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _rating == 0
-                  ? null
-                  : () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Thank you for your feedback!')),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                disabledBackgroundColor: Colors.grey.shade300,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
-              child: const Text(
-                'Submit Feedback',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16),
-              ),
-            ),
           ),
         ],
       ),
@@ -507,6 +256,38 @@ class BookingDetailScreen extends StatelessWidget {
   final Booking booking;
   const BookingDetailScreen({super.key, required this.booking});
 
+  // Handle Reschedule Logic
+  Future<void> _handleReschedule(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+
+    if (pickedDate == null) return;
+
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 19, minute: 30),
+    );
+
+    if (pickedTime == null) return;
+
+    // Formatting for Dialog
+    String formattedDate = "${pickedDate.day} ${_getMonth(pickedDate.month)}";
+    String formattedTime = pickedTime.format(context).toLowerCase();
+
+    if (context.mounted) {
+      _showSuccessDialog(context, booking.serviceName, formattedDate, formattedTime);
+    }
+  }
+
+  String _getMonth(int month) {
+    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return m[month - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -514,98 +295,35 @@ class BookingDetailScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: const BackButton(color: Colors.black),
-        title: const Text('Booking Details',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        iconTheme: const IconThemeData(color: Colors.black),
+        title: const Text('Booking Details', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Status badge
-            Center(
-              child: Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: booking.status == BookingStatus.upcoming
-                      ? Colors.green.shade50
-                      : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  booking.status == BookingStatus.upcoming
-                      ? 'Upcoming'
-                      : 'Completed',
-                  style: TextStyle(
-                    color: booking.status == BookingStatus.upcoming
-                        ? Colors.green
-                        : Colors.grey.shade600,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-
-            // Service info card
             _DetailCard(
               title: 'Service Information',
               rows: [
                 _DetailRow(label: 'Service', value: booking.serviceName),
-                _DetailRow(label: 'Type', value: booking.description),
                 _DetailRow(label: 'Date', value: booking.date.replaceAll('\n', ' ')),
                 _DetailRow(label: 'Time', value: booking.timeSlot),
               ],
             ),
-            const SizedBox(height: 16),
-
-            // Payment card
-            _DetailCard(
-              title: 'Payment Summary',
-              rows: [
-                _DetailRow(label: 'Service Charge', value: '₹${booking.amount.toStringAsFixed(0)}'),
-                const _DetailRow(label: 'Taxes & Fees', value: '₹0'),
-                _DetailRow(
-                  label: 'Total',
-                  value: '₹${booking.amount.toStringAsFixed(0)}',
-                  isBold: true,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Booking ID card
-            _DetailCard(
-              title: 'Booking Reference',
-              rows: [
-                _DetailRow(label: 'Booking ID', value: '#BK${booking.id.padLeft(6, '0')}'),
-              ],
-            ),
-            const SizedBox(height: 30),
-
-            // CTA
+            const Spacer(),
             if (booking.status == BookingStatus.upcoming)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () => _handleReschedule(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text(
-                    'Reschedule Booking',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16),
-                  ),
+                  child: const Text('Reschedule Booking',
+                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
           ],
@@ -615,46 +333,30 @@ class BookingDetailScreen extends StatelessWidget {
   }
 }
 
-// ─── Detail Card ──────────────────────────────────────────────────────────────
+// ─── Helper Widgets for Detail Screen ─────────────────────────────────────────
 class _DetailCard extends StatelessWidget {
   final String title;
   final List<_DetailRow> rows;
-
   const _DetailCard({required this.title, required this.rows});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8EAF6),
-        borderRadius: BorderRadius.circular(16),
-      ),
       padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(16)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary)),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
           const SizedBox(height: 12),
-          ...rows.map((row) => Padding(
+          ...rows.map((r) => Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(row.label,
-                    style: TextStyle(
-                        color: Colors.grey.shade600, fontSize: 14)),
-                Text(row.value,
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: row.isBold
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                        color: Colors.black87)),
+                Text(r.label, style: TextStyle(color: Colors.grey.shade600)),
+                Text(r.value, style: const TextStyle(fontWeight: FontWeight.w600)),
               ],
             ),
           )),
@@ -664,19 +366,11 @@ class _DetailCard extends StatelessWidget {
   }
 }
 
+
+
 class _DetailRow {
   final String label;
   final String value;
-  final bool isBold;
-
-  const _DetailRow(
-      {required this.label, required this.value, this.isBold = false});
+  _DetailRow({required this.label, required this.value});
 }
 
-// ─── Entry Point (for standalone testing) ────────────────────────────────────
-void main() {
-  runApp(const MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: BookingScreen(),
-  ));
-}
