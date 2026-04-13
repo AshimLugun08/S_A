@@ -47,10 +47,7 @@ class ProviderDashboard extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary
                     )),
-                TextButton(
-                    onPressed: () {},
-                    child: const Text("View Calendar", style: TextStyle(color: AppColors.primary))
-                ),
+
               ],
             ),
             const SizedBox(height: 16),

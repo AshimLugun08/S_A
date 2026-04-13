@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:s_a/Screens/Service_Provider/EditProfilePage.dart';
+import 'package:s_a/Screens/Service_Provider/AddMemberScreen.dart';
+import 'package:s_a/Screens/Service_Provider/EditProfilePage.dart'; // Ensure this path is correct
+import 'package:s_a/Screens/Service_Provider/Myteams.dart';
 import 'package:s_a/const/color/colors.dart';
-// import 'package:your_project/const/color/colors.dart'; // Apna path check karein
 
 class AccountProfilePage extends StatelessWidget {
   const AccountProfilePage({super.key});
+
 
   @override
   Widget build(BuildContext context) {
@@ -12,26 +14,38 @@ class AccountProfilePage extends StatelessWidget {
       backgroundColor: AppColors.background,
       appBar: _buildAppBar(context),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
         child: Column(
           children: [
-            // --- OVERALL RATING CARD ---
+            // 1. PROFESSIONAL HEADER (Avatar + Bio)
+            _buildProfileHeader(),
+            const SizedBox(height: 24),
+
+            // 2. PROFESSIONAL ACTION STRIP (Share, View, Support)
+            _buildProfessionalActionButtons(context),
+            const SizedBox(height: 30),
+
+            // 3. STATS GRID (Performance Metrics)
+            const _StatsGrid(),
+            const SizedBox(height: 24),
+
+            // 4. OVERALL RATING CARD
             _buildOverallRatingCard(),
             const SizedBox(height: 16),
 
-            // --- RATING BREAKDOWN CARD ---
+            // 5. RATING BREAKDOWN
             _buildRatingBreakdown(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // --- STATS GRID ---
-            const _StatsGrid(),
+            // 6. PROFESSIONAL SETTINGS MENU
+            _buildProfessionalMenu(context),
             const SizedBox(height: 30),
 
-            // --- CLIENT FEEDBACK SECTION ---
+            // 7. CLIENT FEEDBACK SECTION
             const _ClientFeedbackHeader(),
             const SizedBox(height: 16),
 
-            // --- REVIEW LIST ---
+            // REVIEWS
             _buildReviewCard(
               name: "Marcus Rivera",
               role: "Interior Design Consult",
@@ -52,43 +66,209 @@ class AccountProfilePage extends StatelessWidget {
             const SizedBox(height: 10),
             TextButton.icon(
               onPressed: () {},
-              icon: const Text("View 124 more reviews", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+              icon: const Text("View 124 more reviews",
+                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
               label: const Icon(Icons.keyboard_arrow_down, color: AppColors.primary),
             ),
-            const SizedBox(height: 80), // Bottom nav space
+            const SizedBox(height: 100), // Extra space for Bottom Navigation Bar
           ],
         ),
       ),
     );
   }
 
-  // ── APP BAR WITH EDIT OPTION ──
+  // ── APP BAR ──
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
-      leading: const Padding(
-        padding: EdgeInsets.all(8.0),
-        child: CircleAvatar(
-          backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=alex'),
-        ),
-      ),
-      title: const Text("Fluid Marketplace",
-          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
+      centerTitle: true,
+      title: const Text("Professional Profile",
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16)),
       actions: [
-        // EDIT PROFILE BUTTON
         IconButton(
           onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const ServiceManagementPage()));
+            // Logic to switch profile or settings
           },
-          icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
-          tooltip: "Edit Profile",
-        ),
-        IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none, color: AppColors.iconSecondary)
+          icon: Image.asset("assets/icons/switch.png", height: 24),
         ),
       ],
+    );
+  }
+
+  // ── 1. PROFILE HEADER ──
+  Widget _buildProfileHeader() {
+    return Column(
+      children: [
+        Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            const CircleAvatar(
+              radius: 50,
+              backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=alex'),
+            ),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.green,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: const Icon(Icons.check, color: Colors.white, size: 14),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Text("Alex Benjamin",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+        const Text("Professional Interior Designer",
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Text("Top Rated Pro",
+              style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold)),
+        ),
+      ],
+    );
+  }
+
+  // ── 2. PROFESSIONAL ACTION BUTTONS ──
+  Widget _buildProfessionalActionButtons(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        // _actionIcon(Icons.share_outlined, "Share"),
+        _actionItem("assets/icons/developers.png", "My Team",onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const TeamManagementPage()));
+        },),
+        _actionItem("assets/icons/worker.png", "Add Member",onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const AddProfessionalPage()));
+        },),
+        // _actionIcon(Icons.remove_red_eye_outlined, "Public View"),
+        _actionItem("assets/icons/customer-service.png" ,"Support",onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const TeamManagementPage()));
+        },)
+      ],
+    );
+  }
+
+  Widget _actionItem(String imageAssetPath, String label, {required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap, // ─── CLICK ACTION ADDED HERE ───
+      behavior: HitTestBehavior.opaque, // Ensures the entire area (including padding) is clickable
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.divider),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
+            ),
+            child: ClipOval(
+              child: Image.asset(
+                imageAssetPath,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+  // ── 6. PROFESSIONAL SETTINGS MENU ──
+  Widget _buildProfessionalMenu(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        children: [
+          _menuItem("assets/icons/pencil.png", "Edit Profile", "Update bio and contact info",
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ServiceManagementPage()))
+          ),
+          _menuItem("assets/icons/offer.png", "My Services", "Manage your service listings"),
+
+
+          // _menuItem(Icons.account_balance_wallet_outlined, "Earnings", "\$4,250.00 available to withdraw"),
+          // _menuItem(, "Logout", "Exit your professional account",
+          //     isLast: true, color: Colors.redAccent
+          // ),
+        ],
+      ),
+    );
+  }
+
+  Widget _menuItem(
+      String imageAsset, // Changed from IconData icon
+      String title,
+      String subtitle, {
+        bool isLast = false,
+        Color? color,
+        VoidCallback? onTap,
+      }) {
+    return ListTile(
+      onTap: onTap,
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          // Keeps your light tinted background
+          color: (color ?? AppColors.primary).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Image.asset(
+          imageAsset,
+          width: 20, // Matching your original icon size
+          height: 20,
+          fit: BoxFit.contain,
+
+        ),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right,
+        size: 18,
+        color: AppColors.textSecondary,
+      ),
+      shape: isLast ? null : const Border(
+        bottom: BorderSide(color: AppColors.divider), // Changed from AppColors.background for visibility
+      ),
     );
   }
 
@@ -241,7 +421,7 @@ class _StatsGrid extends StatelessWidget {
   }
 }
 
-// ── FEEDBACK HEADER WITH CHIPS ──
+
 class _ClientFeedbackHeader extends StatelessWidget {
   const _ClientFeedbackHeader();
 

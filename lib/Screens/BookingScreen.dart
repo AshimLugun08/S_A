@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:s_a/Screens/FeedbackSection.dart';
 import 'package:s_a/const/color/colors.dart';
 
 // ─── App Colors ───────────────────────────────────────────────────────────────
@@ -205,7 +206,10 @@ class BookingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -215,33 +219,73 @@ class BookingCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(booking.date, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    booking.date,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
-                  Text(booking.description, style: const TextStyle(color: Colors.grey)),
+                  Text(
+                    booking.description,
+                    style: const TextStyle(color: Colors.grey),
+                  ),
                 ],
               ),
-              Text(booking.serviceName, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+              Text(
+                booking.serviceName,
+                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // --- BUTTON LOGIC START ---
               if (isUpcoming)
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    // Handle Cancel logic
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     side: const BorderSide(color: AppColors.primary),
+                    elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: const Text('Cancel Booking', style: TextStyle(color: AppColors.primary)),
+                )
+              else
+              // FEEDBACK BUTTON FOR PREVIOUS BOOKINGS
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const FeedbackPage()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text(
+                    'Give Feedback',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
                 ),
+              // --- BUTTON LOGIC END ---
+
               TextButton(
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => BookingDetailScreen(booking: booking)));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => BookingDetailScreen(booking: booking)),
+                  );
                 },
-                child: const Text('View details', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'View details',
+                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),

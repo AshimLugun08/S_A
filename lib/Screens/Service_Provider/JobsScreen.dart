@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:s_a/const/color/colors.dart';
-// import 'package:your_project/const/color/colors.dart'; // Apna path check karein
+
 
 class ManageJobsScreen extends StatefulWidget {
   const ManageJobsScreen({super.key});
 
   @override
   State<ManageJobsScreen> createState() => _ManageJobsScreenState();
+
 }
 
 class _ManageJobsScreenState extends State<ManageJobsScreen> {
-  int _selectedTab = 0; // 0: Upcoming, 1: Ongoing, 2: Completed
+  int _selectedTab = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +75,7 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
-      leading: const Icon(Icons.menu, color: AppColors.primary),
+      // leading: const Icon(Icons.menu, color: AppColors.primary),
       title: const Text("Manage Jobs", style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold)),
       centerTitle: true,
       actions: [
