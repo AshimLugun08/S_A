@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:s_a/Screens/Service_Provider/DashbordScreen.dart';
 import 'package:s_a/Screens/Service_Provider/EarningsScreen.dart';
+import 'package:s_a/Screens/Service_Provider/JobsScreen.dart';
 import 'package:s_a/Screens/Service_Provider/ProfileScreen.dart';
-import 'package:s_a/const/color/colors.dart'; // Apna color path check kar lena
+import 'package:s_a/const/color/colors.dart';
 
 
 class MainContainer extends StatefulWidget {
@@ -12,15 +13,18 @@ class MainContainer extends StatefulWidget {
   State<MainContainer> createState() => _MainContainerState();
 }
 
+
 class _MainContainerState extends State<MainContainer> {
+
   int _selectedIndex = 0;
 
-  // ── SCREENS LIST ──
   final List<Widget> _pages = [
+
     const ProviderDashboard(),
-    const AccountProfilePage(),
+    const ManageJobsScreen(),
     const EarningsScreen(),
     const AccountProfilePage(),
+
   ];
 
   void _onItemTapped(int index) {
@@ -55,25 +59,50 @@ class _MainContainerState extends State<MainContainer> {
           unselectedItemColor: Colors.grey,
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
           unselectedLabelStyle: const TextStyle(fontSize: 12),
-          items: const [
+          // 1. Remove 'const' from the items list
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
-              activeIcon: Icon(Icons.dashboard),
+              icon: Image.asset(
+                'assets/icons/data.png',
+                height: 24,
+              ),
+              activeIcon: Image.asset(
+                'assets/icons/data.png',
+                height: 24,
+              ),
               label: 'Dashboard',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.work_outline),
-              activeIcon: Icon(Icons.work),
+              icon: Image.asset(
+                'assets/icons/job-search.png',
+                height: 24,
+              ),
+              activeIcon: Image.asset(
+                'assets/icons/job-search.png',
+                height: 24,
+              ),
               label: 'Jobs',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.account_balance_wallet_outlined),
-              activeIcon: Icon(Icons.account_balance_wallet),
+              icon: Image.asset(
+                'assets/icons/earning.png',
+                height: 24,
+              ),
+              activeIcon: Image.asset(
+                'assets/icons/earning.png',
+                height: 24,
+              ),
               label: 'Earnings',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
+              icon: Image.asset(
+                'assets/icons/profile.png',
+                height: 24,
+              ),
+              activeIcon: Image.asset(
+                'assets/icons/profile.png',
+                height: 24,
+              ),
               label: 'Account',
             ),
           ],

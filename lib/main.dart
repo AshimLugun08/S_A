@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 // Ensure this path matches your project structure
 import 'package:s_a/Screens/LoginScreen.dart';
 import 'package:s_a/Screens/OnbordingScreeen.dart';
+import 'package:s_a/Screens/Service_Provider/bottom_nav.dart';
 
 void main() {
   runApp(const MyApp());
@@ -65,7 +66,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           context,
           PageRouteBuilder(
             transitionDuration: const Duration(milliseconds: 800),
-            pageBuilder: (context, animation, secondaryAnimation) => const OnboardingScreen(),
+            // pageBuilder: (context, animation, secondaryAnimation) => const OnboardingScreen(),
+            pageBuilder: (context, animation, secondaryAnimation) => const MainContainer(),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
             },

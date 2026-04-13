@@ -54,46 +54,45 @@ class _MainNavigationState extends State<MainNavigation> {
             ),
           ],
         ),
-        child: BottomNavigationBar(
+        child: // ... existing imports ...
+
+// 1. Ensure your assets are defined in pubspec.yaml
+// assets:
+//   - assets/icons/
+
+        BottomNavigationBar(
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
           selectedItemColor: AppColors.navSelected,
           unselectedItemColor: AppColors.navUnselected,
-
-          // ── ADD THESE TWO LINES TO INCREASE ICON SIZE ──
-          selectedIconTheme: const IconThemeData(size: 40),   // Size when item is selected
-          unselectedIconTheme: const IconThemeData(size: 35), // Size when item is NOT selected
-
-          selectedFontSize: 12,
-          unselectedFontSize: 12,
           showUnselectedLabels: true,
           elevation: 0,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
+              icon: Image.asset('assets/icons/3d-house.png', height: 35),
+              activeIcon: Image.asset('assets/icons/3d-house.png', height: 40),
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month_outlined),
-              activeIcon: Icon(Icons.calendar_month),
+              icon: Image.asset('assets/icons/calendar.png', height: 35),
+              activeIcon: Image.asset('assets/icons/calendar.png', height: 40),
               label: 'Booking',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.local_offer_outlined),
-              activeIcon: Icon(Icons.local_offer),
+              icon: Image.asset('assets/icons/offer.png', height: 35),
+              activeIcon: Image.asset('assets/icons/offer.png', height: 40),
               label: 'Offer',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline),
-              activeIcon: Icon(Icons.chat_bubble),
+              icon: Image.asset('assets/icons/chat.png', height: 35),
+              activeIcon: Image.asset('assets/icons/chat.png', height: 40),
               label: 'Chat',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
+              icon: Image.asset('assets/icons/profile.png', height: 35),
+              activeIcon: Image.asset('assets/icons/profile.png', height: 40),
               label: 'Profile',
             ),
           ],

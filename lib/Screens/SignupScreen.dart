@@ -1,5 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:s_a/const/color/colors.dart'; // Ensure path is correct
+import 'package:image_picker/image_picker.dart';
+import 'package:s_a/Screens/BottomNavComp.dart';
+import 'package:s_a/const/color/colors.dart';
+import 'package:s_a/const/endpoint/ApiService.dart';
+import 'dart:developer' as dev;
+
+import 'package:s_a/const/endpoint/endpoint.dart'; // Advanced logging
+
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -9,11 +17,123 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  // Controllers for each field
+  // Controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _stateController = TextEditingController();
+
+  File? _imageFile;
+  final String _selectedRole = "customer";
+  bool _isLoading = false;
+
+  // Function to pick image
+  Future<void> _pickImage() async {
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
+
+  Future<void> _handleSignup() async {
+
+
+    final String fullUrl = "${ApiEndoint.baseUrl}${ApiEndoint.register}.";
+
+    debugPrint("🚀 DEBUG: [Signup] Process Started");
+    debugPrint("🔗 DEBUG: [API] Full Target URL: $fullUrl");
+
+    // 2. Comprehensive Validation
+    if (_nameController.text.trim().isEmpty ||
+        _emailController.text.trim().isEmpty ||
+        _passController.text.isEmpty ||
+        _phoneController.text.trim().isEmpty) {
+
+      debugPrint("❌ DEBUG: [Validation] Failed - Missing required fields at $fullUrl");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill in all required fields (Name, Email, Password, Phone)")),
+      );
+      return;
+    }
+
+    // 3. Start Loading State
+    setState(() => _isLoading = true);
+
+    try {
+      debugPrint("📡 DEBUG: [API] Calling POST to: $fullUrl");
+      debugPrint("📦 DEBUG: [API] Payload: { name: ${_nameController.text.trim()}, email: ${_emailController.text.trim()}, role: $_selectedRole }");
+      debugPrint("🖼️ DEBUG: [API] Profile Image Attached: ${_imageFile != null}");
+
+      // 4. Execute API Call
+      final response = await ApiService().register(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passController.text,
+        phone: _phoneController.text.trim(),
+        address: _addressController.text.trim(),
+        city: _cityController.text.trim(),
+        state: _stateController.text.trim(),
+        role: _selectedRole,
+        imageFile: _imageFile,
+      );
+
+      // 5. Check for Async Gap
+      if (!mounted) {
+        debugPrint("⚠️ DEBUG: [Context] Widget unmounted during API call to $fullUrl");
+        return;
+      }
+
+      debugPrint("✅ DEBUG: [API] Success from $fullUrl. Status Code: ${response.statusCode}");
+      debugPrint("📄 DEBUG: [API] Response Data: ${response.data}");
+
+      // 6. Handle Response Status
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint("➡️ DEBUG: [Navigation] Redirecting to MainNavigation...");
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const MainNavigation()),
+              (route) => false,
+        );
+      } else {
+        debugPrint("⚠️ DEBUG: [API] Server returned non-success status: ${response.statusCode} at $fullUrl");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Registration failed: ${response.data['message'] ?? 'Unknown Error'}")),
+        );
+      }
+
+    } catch (e) {
+      // 7. Error Logging with Full URL
+      debugPrint("💥 DEBUG: [Error] Exception at $fullUrl: $e");
+
+      if (mounted) {
+        String errorMsg = "Connection failed. Please check your internet.";
+
+        if (e.toString().contains("409")) {
+          errorMsg = "This email is already registered.";
+        } else if (e.toString().contains("400")) {
+          errorMsg = "Invalid data. Please check your inputs.";
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMsg)),
+        );
+      }
+    } finally {
+      // 8. Reset Loading State
+      if (mounted) {
+        debugPrint("🏁 DEBUG: [Signup] Flow Completed for $fullUrl");
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -24,114 +144,87 @@ class _SignupScreenState extends State<SignupScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 30.0),
           child: Column(
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 30),
 
-              // ── TOP ILLUSTRATION ──
-              Image.asset(
-                'assets/images/signupimg.png', // Ensure this matches your asset name
-                height: 200,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                      Icons.person_add_alt_1,
-                      size: 100,
-                      color: AppColors.primary
-                  );
-                },
+              // ── PROFILE IMAGE PICKER ──
+              GestureDetector(
+                onTap: _pickImage,
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 60,
+                      backgroundColor: Colors.grey[200],
+                      backgroundImage: _imageFile != null ? FileImage(_imageFile!) : null,
+                      child: _imageFile == null
+                          ? const Icon(Icons.camera_alt, size: 40, color: AppColors.primary)
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                        child: const Icon(Icons.add, color: Colors.white, size: 20),
+                      ),
+                    )
+                  ],
+                ),
               ),
 
               const SizedBox(height: 20),
-
-              // ── TITLE ──
               const Text(
-                "Signup Account",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-
-              // ── YELLOW ACCENT BAR ──
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                height: 4,
-                width: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-
-              // ── SUBTITLE ──
-              const Text(
-                "Please enter your credential\nto signup account",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
+                "Create Account", // Replaced l10n.aboutUs
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 30),
 
               // ── INPUT FIELDS ──
-              _buildInputField(
-                controller: _nameController,
-                hint: "Enter your name",
-                icon: Icons.person_outline,
-              ),
+              _buildInputField(_nameController, "Full Name", Icons.person_outline),
               const SizedBox(height: 15),
-              _buildInputField(
-                controller: _emailController,
-                hint: "Enter your Email",
-                icon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-              ),
+              _buildInputField(_emailController, "Email", Icons.email_outlined, keyboardType: TextInputType.emailAddress),
               const SizedBox(height: 15),
-              _buildInputField(
-                controller: _phoneController,
-                hint: "Enter your mobile number",
-                icon: Icons.phone_android_outlined,
-                keyboardType: TextInputType.phone,
-              ),
+              _buildInputField(_passController, "Password", Icons.lock_outline, isPassword: true),
               const SizedBox(height: 15),
-              _buildInputField(
-                controller: _locationController,
-                hint: "Enter your location",
-                icon: Icons.location_on_outlined,
+              _buildInputField(_phoneController, "Phone", Icons.phone_android, keyboardType: TextInputType.phone),
+              const SizedBox(height: 15),
+              _buildInputField(_addressController, "Address", Icons.home_outlined),
+              const SizedBox(height: 15),
+
+              Row(
+                children: [
+                  Expanded(child: _buildInputField(_cityController, "City", Icons.location_city)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _buildInputField(_stateController, "State", Icons.map_outlined)),
+                ],
               ),
 
-              const SizedBox(height: 50),
+              const SizedBox(height: 40),
 
               // ── SIGNUP BUTTON ──
               SizedBox(
                 width: double.infinity,
-                height: 60,
+                height: 55,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Logic for signup
-                  },
+                  onPressed: _isLoading ? null : _handleSignup,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
-                  child: const Text(
-                    "Signup Now",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text("Signup Now", style: TextStyle(color: Colors.white, fontSize: 16)),
                 ),
               ),
 
               const SizedBox(height: 20),
+              const Text(
+                "By signing up, you agree to our Terms & Conditions", // Replaced l10n.termsCond
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 30),
             ],
           ),
         ),
@@ -139,37 +232,28 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  // ── HELPER WIDGET FOR INPUT FIELDS ──
-  Widget _buildInputField({
-    required TextEditingController controller,
-    required String hint,
-    IconData? icon,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
+  // ── REUSABLE INPUT FIELD ──
+  Widget _buildInputField(
+      TextEditingController controller,
+      String hint,
+      IconData icon,
+      {bool isPassword = false, TextInputType keyboardType = TextInputType.text}
+      ) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: AppColors.border.withOpacity(0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withOpacity(0.3)),
       ),
       child: TextField(
         controller: controller,
+        obscureText: isPassword,
         keyboardType: keyboardType,
-        style: const TextStyle(fontSize: 15),
         decoration: InputDecoration(
+          prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey.withOpacity(0.6)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 18),
           border: InputBorder.none,
-          // Optional: Add prefix icons if you want to match common UI patterns
-          // prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
+          contentPadding: const EdgeInsets.symmetric(vertical: 15),
         ),
       ),
     );

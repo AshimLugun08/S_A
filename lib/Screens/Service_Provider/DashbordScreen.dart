@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:s_a/const/color/colors.dart';
-// import 'package:your_project_path/const/color/colors.dart'; // Apna path check kar lein
+
+
 
 class ProviderDashboard extends StatelessWidget {
   const ProviderDashboard({super.key});
@@ -125,7 +126,7 @@ class ProviderDashboard extends StatelessWidget {
     );
   }
 
-  
+
   Widget _buildEarningsCard() {
     return Container(
       width: double.infinity,

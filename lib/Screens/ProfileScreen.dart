@@ -109,17 +109,17 @@ class ProfileScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
-                  _buildMenuItem("Name", Icons.edit_outlined),
-                  _buildMenuItem("Email", Icons.edit_outlined),
-                  _buildMenuItem("Address", Icons.edit_outlined),
-                  _buildMenuItem("Payment Due", Icons.arrow_forward_ios, isSmallArrow: true),
-                  _buildMenuItem("Invoice Download", Icons.arrow_forward_ios, isSmallArrow: true),
-                  _buildMenuItem("Booking Confirmation", Icons.arrow_forward_ios, isSmallArrow: true),
-                  _buildMenuItem("History", Icons.arrow_forward_ios, isSmallArrow: true),
-                  _buildMenuItem("Order Status", Icons.arrow_forward_ios, isSmallArrow: true),
-                  _buildMenuItem("FAQ section", Icons.arrow_forward_ios, isSmallArrow: true),
-                  _buildMenuItem("Support", Icons.arrow_forward_ios, isSmallArrow: true),
-                  _buildMenuItem("Logout", Icons.logout, color: Colors.grey),
+                  _buildMenuItem("Name", Icons.edit_outlined,imagePath: "assets/icons/label.png"), // 3. Pass the image path
+                  _buildMenuItem("Email", Icons.edit_outlined,imagePath: "assets/icons/gmail.png"),
+                  _buildMenuItem("Address", Icons.edit_outlined,imagePath: "assets/icons/location-pin.png"),
+                  _buildMenuItem("Payment Due", Icons.arrow_forward_ios, isSmallArrow: true,imagePath: "assets/icons/money.png"), // 3. Pass the image path
+                  _buildMenuItem("Invoice Download", Icons.arrow_forward_ios, isSmallArrow: true, imagePath: "assets/icons/invoice.png"), // 3. Pass the image path
+                  _buildMenuItem("Booking Confirmation", Icons.arrow_forward_ios, isSmallArrow: true,imagePath: "assets/icons/booking.png"), // 3. Pass the image path
+                  _buildMenuItem("History", Icons.arrow_forward_ios, isSmallArrow: true ,imagePath: "assets/icons/clock.png"), // 3. Pass the image path
+                  _buildMenuItem("Order Status", Icons.arrow_forward_ios, isSmallArrow: true, imagePath: "assets/icons/delivery.png"), // 3. Pass the image path
+                  _buildMenuItem("FAQ section", Icons.arrow_forward_ios, isSmallArrow: true ,imagePath:  "assets/icons/faq.png"), // 3. Pass the image path
+                  _buildMenuItem("Support", Icons.arrow_forward_ios, isSmallArrow: true,imagePath: "assets/icons/headphones.png"), // 3. Pass the image path
+                  _buildMenuItem("Logout", Icons.logout, color: Colors.grey ,imagePath: "assets/icons/switch.png"), // 3. Pass the image path
                   const SizedBox(height: 30),
                 ],
               ),
@@ -130,14 +130,33 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // ── REUSABLE MENU ITEM WIDGET ──
-  Widget _buildMenuItem(String title, IconData icon, {Color? color, bool isSmallArrow = false}) {
+  Widget _buildMenuItem(
+      String title,
+      IconData icon,
+      {
+        String? imagePath, // Optional parameter
+        Color? color,
+        bool isSmallArrow = false,
+      }
+      ) {
     return Container(
+
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
       ),
       child: ListTile(
         contentPadding: EdgeInsets.zero,
+
+        // If imagePath is provided, show the image. If null, show nothing.
+        leading: imagePath != null
+            ? Image.asset(
+          imagePath,
+          width: 22,
+          height: 22,
+          fit: BoxFit.contain,
+        )
+            : null,
+
         title: Text(
           title,
           style: const TextStyle(
@@ -146,11 +165,13 @@ class ProfileScreen extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
+
         trailing: Icon(
           icon,
           size: isSmallArrow ? 18 : 22,
           color: color ?? Colors.grey.shade400,
         ),
+
         onTap: () {
           // Handle navigation
         },

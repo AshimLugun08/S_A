@@ -1,5 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:s_a/const/Modal/serviceListModal.dart';
+import 'package:s_a/const/endpoint/ApiService.dart';
 import 'package:s_a/Screens/Service_Provider/bottom_nav.dart';
+// Ensure you import your Service model here
+
 
 class IdentityTrustScreen extends StatefulWidget {
   const IdentityTrustScreen({super.key});
@@ -9,342 +15,232 @@ class IdentityTrustScreen extends StatefulWidget {
 }
 
 class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
-  bool isAgreed = false;
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+  bool _isFetchingServices = true;
+  File? _profileImage;
+
+  // --- Dynamic Service List ---
+  dynamic _selectedServiceId;
+  List<Services> _services = [];
+
+  // --- Controllers ---
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _stateController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchServices(); // Fetch real data on load
+  }
+
+  // --- Fetch Real Services from API ---
+  Future<void> _fetchServices() async {
+    setState(() => _isFetchingServices = true);
+    try {
+      // Calling the ApiService method we created earlier
+      final response = await ApiService.fetchServiceList();
+      if (response != null && response.status == true) {
+        print("response ${response.services}");
+        setState(() {
+          _services = response.services ?? [];
+        });
+      }
+    } catch (e) {
+      debugPrint("Service Fetch Error: $e");
+    } finally {
+      setState(() => _isFetchingServices = false);
+    }
+  }
+
+  // --- Image Picker ---
+  Future<void> _pickImage() async {
+    final pickedFile = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70
+    );
+    if (pickedFile != null) {
+      setState(() => _profileImage = File(pickedFile.path));
+    }
+  }
+
+  // --- API Submission ---
+  Future<void> _handleRegister() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_profileImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Photo is required! Please upload a profile picture.")),
+      );
+      return;
+    }
+
+    if (_selectedServiceId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select a service!")),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await ApiService().registerOwner(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        address: _addressController.text.trim(),
+        city: _cityController.text.trim(),
+        state: _stateController.text.trim(),
+        serviceId: _selectedServiceId,
+        imageFile: _profileImage,
+      );
+
+      if (mounted && (response.statusCode == 200 || response.statusCode == 201)) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const MainContainer()),
+              (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        title: const Text("Service Provider Registration"),
         backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
         elevation: 0,
-        leading: const BackButton(color: Colors.black),
-        title: const Text(
-          'Fluid Marketplace',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=a'), // Placeholder
-            ),
-          )
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- Step & Progress ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text('STEP 02/03',
-                        style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 4),
-                    Text('Identity & Trust',
-                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      height: 60,
-                      width: 60,
-                      child: CircularProgressIndicator(
-                        value: 0.66,
-                        strokeWidth: 8,
-                        backgroundColor: Colors.grey.shade200,
-                        color: Colors.blue.shade800,
-                      ),
-                    ),
-                    const Text('66%', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ],
-                )
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // --- Info Banner ---
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFDBEAFE),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.verified_user, color: Colors.blue),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('Verification in progress',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('Submit your documents to get the "Verified Pro" badge.',
-                            style: TextStyle(fontSize: 12)),
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            ),
-            const SizedBox(height: 30),
-
-            // --- Contact Details ---
-            _sectionHeader(Icons.phone_android, 'Contact Details'),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: const [
-                      Text('+1'),
-                      Icon(Icons.arrow_drop_down),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: '000-000-0000',
-                      filled: true,
-                      fillColor: Colors.grey.shade200,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const Padding(
-              padding: EdgeInsets.only(top: 8.0, left: 4),
-              child: Text("We'll send a 6-digit verification code to this number.",
-                  style: TextStyle(fontSize: 12, color: Colors.grey)),
-            ),
-            const SizedBox(height: 30),
-
-            // --- Document Upload ---
-            _sectionHeader(Icons.description, 'Document Upload'),
-            const SizedBox(height: 16),
-
-            // Identity Proof Card
-            _uploadCard(
-              title: 'Identity Proof',
-              subtitle: 'Passport or Driver\'s License',
-              icon: Icons.badge,
-              hasError: true,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 30),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300, style: BorderStyle.none), // Simplified
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.white,
-                ),
-                child: Column(
-                  children: const [
-                    Icon(Icons.cloud_upload_outlined, color: Colors.grey, size: 40),
-                    Text('Tap to upload front side',
-                        style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-                    Text('PNG, JPG up to 10MB',
-                        style: TextStyle(fontSize: 10, color: Colors.grey)),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Certifications Card
-            _uploadCard(
-              title: 'Certifications',
-              subtitle: 'Trade licenses or diplomas',
-              icon: Icons.workspace_premium,
-              trailing: const Icon(Icons.add_circle, color: Colors.grey),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.picture_as_pdf, size: 20, color: Colors.grey),
-                    SizedBox(width: 10),
-                    Text('HVAC_Certification.pdf', style: TextStyle(fontSize: 13)),
-                    Spacer(),
-                    Icon(Icons.close, size: 18, color: Colors.red),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            // --- What Happens Next ---
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('WHAT HAPPENS NEXT?',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-                  const SizedBox(height: 15),
-                  _nextStepItem(true, 'Manual Review', 'Our safety team verifies your identity and credentials within 24-48 hours.'),
-                  const SizedBox(height: 15),
-                  _nextStepItem(false, 'Background Check', ''),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // --- Footer ---
-            Row(
-              children: [
-                Checkbox(
-                  value: isAgreed,
-                  onChanged: (val) => setState(() => isAgreed = val!),
-                ),
-                const Expanded(
-                  child: Text.rich(
-                    TextSpan(
-                      text: 'I agree to the ',
-                      style: TextStyle(fontSize: 12),
-                      children: [
-                        TextSpan(text: 'Partner Terms of Service', style: TextStyle(color: Colors.blue)),
-                        TextSpan(text: ' and '),
-                        TextSpan(text: 'Privacy Policy', style: TextStyle(color: Colors.blue)),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                onPressed: () {
-
-                  Navigator.push(context, MaterialPageRoute(builder: (context)=>MainContainer()));
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade700,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Text('Continue to Service Setup', style: TextStyle(fontSize: 16, color: Colors.white)),
-                    SizedBox(width: 10),
-                    Icon(Icons.arrow_forward, color: Colors.white),
-                  ],
-                ),
-              ),
-            ),
-            Center(
-              child: TextButton(
-                onPressed: () {},
-                child: const Text('Save progress and exit', style: TextStyle(color: Colors.grey)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _sectionHeader(IconData icon, String title) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: Colors.black54),
-        const SizedBox(width: 8),
-        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-
-  Widget _uploadCard({required String title, required String subtitle, required IconData icon, required Widget child, bool hasError = false, Widget? trailing}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              CircleAvatar(backgroundColor: Colors.blue.shade50, child: Icon(icon, color: Colors.blue)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                  ],
-                ),
-              ),
-              if (hasError) const Icon(Icons.error, color: Colors.red),
-              if (trailing != null) trailing,
-            ],
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _nextStepItem(bool isActive, String title, String desc) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          margin: const EdgeInsets.only(top: 4),
-          width: 8, height: 8,
-          decoration: BoxDecoration(
-            color: isActive ? Colors.blue : Colors.grey,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
+        child: Form(
+          key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: isActive ? Colors.black : Colors.grey)),
-              if (desc.isNotEmpty) Text(desc, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              // --- Profile Image ---
+              GestureDetector(
+                onTap: _pickImage,
+                child: CircleAvatar(
+                  radius: 60,
+                  backgroundColor: Colors.blue.shade50,
+                  backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+                  child: _profileImage == null
+                      ? const Icon(Icons.camera_alt, size: 40, color: Colors.blue)
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 25),
+
+              _buildField(_nameController, "Full Name", Icons.person),
+
+              // --- Dynamic Dropdown ---
+              _buildServiceDropdown(),
+
+              _buildField(_emailController, "Email Address", Icons.email, keyboard: TextInputType.emailAddress),
+              _buildField(_phoneController, "Phone Number", Icons.phone, keyboard: TextInputType.phone),
+              _buildField(_addressController, "Residential Address", Icons.home),
+
+              Row(
+                children: [
+                  Expanded(child: _buildField(_cityController, "City", Icons.location_city)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _buildField(_stateController, "State", Icons.map)),
+                ],
+              ),
+
+              const SizedBox(height: 40),
+
+              // --- Submit Button ---
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: (_isLoading || _isFetchingServices) ? null : _handleRegister,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                      "Register Now",
+                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
+                  ),
+                ),
+              ),
             ],
           ),
-        )
-      ],
+        ),
+      ),
+    );
+  }
+
+  // --- Dynamic Service Dropdown ---
+  Widget _buildServiceDropdown() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15.0),
+      child: DropdownButtonFormField<dynamic>(
+        value: _selectedServiceId,
+        hint: Text(_isFetchingServices ? "Loading Services..." : "Select Service Type"),
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.build_circle, color: Colors.blue),
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none
+          ),
+        ),
+        // Mapping real IDs and Names from the API list
+        items: _services.map((service) {
+          return DropdownMenuItem<dynamic>(
+            value: service.id,
+            child: Text(service.name ?? "Unknown"),
+          );
+        }).toList(),
+        onChanged: (value) {
+          setState(() => _selectedServiceId = value);
+        },
+        validator: (value) => value == null ? "Field required" : null,
+      ),
+    );
+  }
+
+  Widget _buildField(TextEditingController controller, String hint, IconData icon, {TextInputType keyboard = TextInputType.text}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15.0),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboard,
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon, color: Colors.blue),
+          hintText: hint,
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none
+          ),
+        ),
+        validator: (value) => (value == null || value.isEmpty) ? "Required" : null,
+      ),
     );
   }
 }
