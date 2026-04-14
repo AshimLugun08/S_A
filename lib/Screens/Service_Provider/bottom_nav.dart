@@ -65,44 +65,44 @@ class _MainContainerState extends State<MainContainer> {
             BottomNavigationBarItem(
               icon: Image.asset(
                 'assets/icons/data.png',
-                height: 24,
+                height: 35,
               ),
               activeIcon: Image.asset(
                 'assets/icons/data.png',
-                height: 24,
+                height: 40,
               ),
               label: 'Dashboard',
             ),
             BottomNavigationBarItem(
               icon: Image.asset(
                 'assets/icons/job-search.png',
-                height: 24,
+                height: 35,
               ),
               activeIcon: Image.asset(
                 'assets/icons/job-search.png',
-                height: 24,
+                height: 40,
               ),
               label: 'Jobs',
             ),
             BottomNavigationBarItem(
               icon: Image.asset(
                 'assets/icons/earning.png',
-                height: 24,
+                height: 35,
               ),
               activeIcon: Image.asset(
                 'assets/icons/earning.png',
-                height: 24,
+                height: 40,
               ),
               label: 'Earnings',
             ),
             BottomNavigationBarItem(
               icon: Image.asset(
                 'assets/icons/profile.png',
-                height: 24,
+                height: 35,
               ),
               activeIcon: Image.asset(
                 'assets/icons/profile.png',
-                height: 24,
+                height: 40,
               ),
               label: 'Account',
             ),

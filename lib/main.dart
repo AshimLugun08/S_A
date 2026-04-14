@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:s_a/Screens/BottomNavComp.dart';
 
 // Ensure this path matches your project structure
 import 'package:s_a/Screens/LoginScreen.dart';
 import 'package:s_a/Screens/OnbordingScreeen.dart';
 import 'package:s_a/Screens/Service_Provider/bottom_nav.dart';
+import 'package:s_a/const/session/session.dart';
 
 void main() {
   runApp(const MyApp());
@@ -61,23 +63,46 @@ class _SplashScreenState extends State<SplashScreen>
     // 3. Start the animation
     _controller.forward();
 
-    // 4. Timer to move to the next screen after 3 seconds
-    Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            transitionDuration: const Duration(milliseconds: 800),
-            // pageBuilder: (context, animation, secondaryAnimation) => const OnboardingScreen(),
-            pageBuilder: (context, animation, secondaryAnimation) => const MainContainer(),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
-          ),
-        );
+    // 4. Determine session and navigate
+    _startSessionCheck();
+  }
+
+// ── NEW SESSION CHECK LOGIC ──
+  Future<void> _startSessionCheck() async {
+    // Fetch user data from Shared Preferences
+    Map<String, dynamic> userData = await UserPref.getUser();
+    bool isLoggedIn = userData['isLoggedIn'] ?? false;
+    String role = (userData['role'] ?? "customer").toString().toLowerCase();
+
+    // Wait for the splash screen duration (3 seconds total)
+    await Future.delayed(const Duration(seconds: 3));
+
+    if (!mounted) return;
+
+    // 5. Decide Destination
+    Widget destination;
+
+    if (isLoggedIn) {
+      if (role == "owner" || role == "service_provider") {
+        destination = const MainContainer(); // Provider Dashboard
+      } else {
+        destination = const MainNavigation(); // Customer Dashboard
       }
-    });
+    } else {
+      destination = const OnboardingScreen(); // New User
+    }
+
+    // 6. Perform Navigation
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 800),
+        pageBuilder: (context, animation, secondaryAnimation) => destination,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
   }
 
   @override

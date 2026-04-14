@@ -4,6 +4,7 @@ import 'package:s_a/Screens/OtpScreen.dart';
 import 'package:s_a/Screens/Service_Provider/ServiveProviderSignUp.dart';
 import 'package:s_a/Screens/SignupScreen.dart';
 import 'package:s_a/const/color/colors.dart';
+import 'package:s_a/const/endpoint/ApiService.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,10 +15,57 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _phoneController = TextEditingController();
+  bool _isLoading = false;
 
-  // ── ROLE STATE ──
-  // False = Customer, True = Service Provider
-  bool _isServiceProvider = false;
+
+  // Inside _LoginScreenState
+  Future<void> _handleSendOtp() async {
+    final phone = _phoneController.text.trim();
+
+    if (phone.isEmpty || phone.length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter a valid mobile number")),
+      );
+      return;
+    }
+
+    // Show loading dialog or state
+    setState(() => _isLoading = true);
+
+    try {
+      // Determine role based on which button or context (Defaulting to customer here)
+      final response = await ApiService().sendOtp(
+          phone: phone,
+          role: "owner" // Or "service_provider" based on your logic
+      );
+
+      if (response != null && response.data['status'] == true) {
+        // SUCCESS
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response.data['message'] ?? "OTP Sent")),
+        );
+
+        // Navigate to OTP Verification Screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VerifyOtpScreen(
+              phone: phone,
+              // If backend sends OTP in response (for testing), pass it
+              serverOtp: response.data['otp'].toString(),
+            ),
+          ),
+        );
+      } else {
+        // FAIL
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response?.data['message'] ?? "Failed to send OTP")),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,9 +92,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 20),
 
                 // ── TITLE ──
-                Text(
-                  _isServiceProvider ? "Provider Login" : "Login Account",
-                  style: const TextStyle(
+                const Text(
+                  "Login Account",
+                  style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
@@ -65,30 +113,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 20),
 
-                // ── ROLE SELECTOR (Customer vs Provider) ──
-                Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: Row(
-                    children: [
-                      _buildRoleButton("Customer", !_isServiceProvider),
-                      _buildRoleButton("Service Provider", _isServiceProvider),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
                 // ── SUBTITLE ──
-                Text(
-                  _isServiceProvider
-                      ? "Enter your provider mobile number\nto manage your services"
-                      : "Please enter your mobile\nnumber to get an OTP",
+                const Text(
+                  "Please enter your mobile\nnumber to get an OTP",
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     color: AppColors.textSecondary,
                     height: 1.5,
@@ -128,80 +157,66 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 60),
+                const SizedBox(height: 40),
 
                 // ── NEXT BUTTON ──
                 SizedBox(
                   width: double.infinity,
                   height: 60,
                   child: ElevatedButton(
-                    onPressed: () {
-                      // You can pass the role to the next screen if needed
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => VerifyOtpScreen(
-                                // Passing the role
-                              )
-                          )
-                      );
-                    },
+                    onPressed: _isLoading ? null : _handleSendOtp, // Disable button while loading
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       elevation: 0,
+                      disabledBackgroundColor: AppColors.primary.withOpacity(0.6), // Stay blue but faded
                     ),
-                    child: const Text(
+                    child: _isLoading
+                        ? const SizedBox(
+                      height: 24, width: 24,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                        : const Text(
                       "Next",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 40),
 
+                const Text(
+                  "Don't have an account?",
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                ),
 
+                const SizedBox(height: 15),
+
+                // ── SIGNUP BUTTONS ──
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      "Don't have account? ",
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    Expanded(
+                      child: _buildSignupButton(
+                        title: "Customer",
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SignupScreen()),
+                        ),
+                      ),
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        if (_isServiceProvider) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const IdentityTrustScreen()),
-                          );
-                        }
-
-                        else {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const SignupScreen()),
-                          );
-                        }
-                      },
-                      child: const Text(
-                        "Signup now",
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: _buildSignupButton(
+                        title: "Provider",
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const IdentityTrustScreen()),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 30),
               ],
             ),
           ),
@@ -210,30 +225,22 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── HELPER WIDGET FOR ROLE SELECTION ──
-  Widget _buildRoleButton(String title, bool isActive) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _isServiceProvider = (title == "Service Provider");
-          });
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isActive ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(25),
-          ),
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: isActive ? Colors.white : AppColors.textSecondary,
-            ),
-          ),
+  // ── REUSABLE SIGNUP BUTTON HELPER ──
+  Widget _buildSignupButton({required String title, required VoidCallback onTap}) {
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: AppColors.primary, width: 1.5),
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+      ),
+      child: Text(
+        "Signup as $title",
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: AppColors.primary,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
         ),
       ),
     );

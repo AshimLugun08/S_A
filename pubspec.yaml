@@ -36,6 +36,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   dio: ^5.9.2
   image_picker: ^1.1.2
+  country_state_city: ^0.1.6
+  shared_preferences: ^2.5.5
 
 
 dev_dependencies:
