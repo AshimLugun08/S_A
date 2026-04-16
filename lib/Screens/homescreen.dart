@@ -90,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _buildHeader(),
                 _buildSearchBar(),
-                _buildPromoBanner(),
+                _buildFeaturedOffer(),
 
                 // --- 3. DYNAMIC CONTENT ---
                 _isLoading
@@ -122,6 +122,47 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // 1. TOP HIGHLIGHT BANNER (Edge-to-Edge Style)
+  Widget _buildFeaturedOffer() {
+    return Container(
+      width: double.infinity,
+      height: 180,
+      margin: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Positioned(
+            right: 0, top: 0, bottom: 0,
+            child: Image.asset(
+              'assets/images/banner_bg.png',
+              fit: BoxFit.cover,
+              width: 180,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(25.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text("Grab the best deal!",
+                    style: TextStyle(color: Colors.white, fontSize: 14)),
+                const Text("60% OFF",
+                    style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                const Text("on Salon Services",
+                    style: TextStyle(color: Colors.white70, fontSize: 16)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- 4. UI COMPONENTS ---
 
   Widget _buildDynamicCategorySection(String title, List<sub.Data> items) {
@@ -133,6 +174,8 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
+        // ─── FIX 1: Align children of the column to the left ───
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -149,18 +192,24 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            // ─── FIX 2: Ensure the scroll view content starts from left ───
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: items.map((item) {
                 return InkWell(
-                  onTap: () => {
-                    Navigator.push(context, MaterialPageRoute(builder: (context)=>ServiceListScreen(subCategoryId: item.subcategoryId ?? 0, title: item.name ?? "",)))
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) =>
+                        ServiceListScreen(subCategoryId: item.subcategoryId ?? 0, title: item.name ?? "")));
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    // Reduced left padding on the first item if you want it flush against the edge
+                    padding: const EdgeInsets.only(right: 15, top: 5, bottom: 5),
                     child: SizedBox(
                       width: 75,
                       child: Column(
+                        // Keep icon and text centered relative to EACH OTHER
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
                             padding: const EdgeInsets.all(10),
@@ -170,7 +219,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             child: (item.images != null && item.images!.isNotEmpty)
                                 ? Image.network(
-                              // Make sure your BaseURL is prefixed if the API returns relative paths
                               "${item.images![0]}",
                               height: 40, width: 40, fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) =>
@@ -291,27 +339,69 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFooterOffer() {
     return Container(
-      margin: const EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(15)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Signup & get 20% OFF", style: TextStyle(fontWeight: FontWeight.bold)),
-              Text("on your first service", style: TextStyle(fontSize: 12)),
-            ],
+      decoration: BoxDecoration(
+        color: AppColors.accent, // Light background (e.g., light blue or grey)
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))
+        ],
+      ),
+      child: Row(
+        children: [
+          // ── 1. TEXT CONTENT ──
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Refer & Earn ₹100",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Invite friends and get credits on their first booking.",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                    height: 1.3,
+                  ),
+                ),
+              ],
             ),
-            child: const Text("Signup Now", style: TextStyle(color: Colors.white)),
-          )
+          ),
+
+          const SizedBox(width: 12),
+
+          // ── 2. ACTION BUTTON ──
+          ElevatedButton(
+            onPressed: () {
+              // Bhai, yahan share_plus package use karke referral link share kar dena
+              debugPrint("Referral Link Shared!");
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: const Text(
+              "Invite Now",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+          ),
         ],
       ),
     );

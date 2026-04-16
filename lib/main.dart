@@ -5,6 +5,7 @@ import 'package:s_a/Screens/BottomNavComp.dart';
 // Ensure this path matches your project structure
 import 'package:s_a/Screens/LoginScreen.dart';
 import 'package:s_a/Screens/OnbordingScreeen.dart';
+import 'package:s_a/Screens/Service_Provider/PendinngScreen.dart';
 import 'package:s_a/Screens/Service_Provider/bottom_nav.dart';
 import 'package:s_a/const/session/session.dart';
 
@@ -84,7 +85,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (isLoggedIn) {
       if (role == "owner" || role == "service_provider") {
-        destination = const MainContainer(); // Provider Dashboard
+        destination = const PendingApprovalScreen(); // Provider Dashboard
       } else {
         destination = const MainNavigation(); // Customer Dashboard
       }

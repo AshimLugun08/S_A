@@ -9,10 +9,17 @@ import 'package:s_a/const/Modal/VerifyOtpresModal.dart';
 import 'package:s_a/const/Modal/categoryListModal.dart';
 import 'package:s_a/const/Modal/createBookngResModal.dart';
 import 'package:s_a/const/Modal/createServiceResModal.dart';
+import 'package:s_a/const/Modal/customerBookingListModal.dart';
+import 'package:s_a/const/Modal/earninModal.dart';
+import 'package:s_a/const/Modal/earningListModal.dart';
+import 'package:s_a/const/Modal/owmerBookingListModal.dart';
+import 'package:s_a/const/Modal/ownerReviewListaModal.dart';
 import 'package:s_a/const/Modal/ownerServiceListModal.dart';
 import 'package:s_a/const/Modal/profectionalListModal.dart';
+import 'package:s_a/const/Modal/reviewListModal.dart';
 import 'package:s_a/const/Modal/serviceDetailModal.dart';
 import 'package:s_a/const/Modal/serviceListModal.dart';
+import 'package:s_a/const/Modal/userdetailModal.dart';
 import 'package:s_a/const/endpoint/endpoint.dart';
 import 'package:s_a/const/session/session.dart';
 
@@ -115,24 +122,26 @@ class ApiService {
     required String phone,
     required String address,
     required String city,
-    required int serviceId,
     required String state,
+    required String adharNo, // 👈 Naya parameter add kiya
+    required int serviceId,
     File? imageFile,
-  }) async
-  {
-    try
-    {
+  }) async {
+    try {
+      // 1. Data Map taiyaar karein
       Map<String, dynamic> data = {
         "name": name,
         "email": email,
         "phone": phone,
         "address": address,
         "city": city,
-        "service_ids": serviceId,
         "state": state,
-        "role": "owner",
+        "adhar_no": adharNo, // 👈 Backend field se match kiya
+        // "service_ids": serviceId,
+        "role": "owner", // Default role
       };
 
+      // 2. Image handle karein agar available ho
       if (imageFile != null) {
         data["profile_image"] = await MultipartFile.fromFile(
           imageFile.path,
@@ -143,36 +152,28 @@ class ApiService {
       FormData formData = FormData.fromMap(data);
 
       // ─── DEBUG: LOG REQUEST DATA ───
-      print("🚀 --- API REQUEST START --- 🚀");
-      print("URL: ${_dio.options.baseUrl}/register");
+      debugPrint("🚀 [API REQUEST] Registering Owner...");
+      debugPrint("║ 🔗 URL: ${ApiEndoint.baseUrl}${ApiEndoint.owner_register}");
       formData.fields.forEach((field) {
-        print("Field: ${field.key} = ${field.value}");
-      });
-      formData.files.forEach((file) {
-        print("File: ${file.key} = ${file.value.filename}");
+        debugPrint("║ 📝 Field: ${field.key} = ${field.value}");
       });
 
+      // 3. POST Request
       final response = await _dio.post(
         ApiEndoint.owner_register,
         data: formData,
       );
 
       // ─── DEBUG: LOG RESPONSE DATA ───
-      print("✅ --- API RESPONSE --- ✅");
-      print("Status Code: ${response.statusCode}");
-      print("Data: ${response.data}");
-      print("-------------------------");
+      debugPrint("✅ [API RESPONSE]: ${response.data}");
 
       return response;
     } on DioException catch (e) {
-      // ─── DEBUG: LOG ERROR ───
-      print("❌ --- API ERROR --- ❌");
-      print("Message: ${e.message}");
-      print("Response: ${e.response?.data}");
+      debugPrint("❌ [API ERROR]: ${e.message}");
+      debugPrint("║ 📄 Data: ${e.response?.data}");
       throw _handleError(e);
     }
   }
-
 
 
   static Future<serviceListModal?> fetchServiceList() async {
@@ -306,77 +307,89 @@ class ApiService {
   }
 
 
-  // ── CREATE PROFESSIONAL PROFILE ──
-  Future<createProfessionalResModal?> createProfessional({
+  // ─── CREATE PROFESSIONAL PROFILE (With Image) ───
+  // ─── CREATE PROFESSIONAL PROFILE (Full Debug) ───
+  static Future<Map<String, dynamic>?> createProfessional({
     required String phone,
     required String name,
     required String profession,
-    required String experience,
+    required int experienceYears,
     required String address,
     required String description,
-  }) async
-  {
+    required int userId,
+    dynamic imageFile, // XFile or File
+  }) async {
     final String url = "${ApiEndoint.baseUrl.trim()}${ApiEndoint.createProfession.trim()}";
 
-    debugPrint("🚀 DEBUG: [Create Professional] Process Started");
-    debugPrint("🔗 DEBUG: [API] URL: $url");
-
     try {
-      // 1. Create FormData payload
-      FormData formData = FormData.fromMap({
+      // 1. Prepare the Map
+      Map<String, dynamic> map = {
         "phone": phone,
         "name": name,
         "profession": profession,
-        "experience_years": experience,
+        "experience_years": experienceYears,
         "address": address,
         "description": description,
-      });
+        "user_id": userId,
+      };
 
-      debugPrint("📦 DEBUG: [API] Payload: $phone, $name, $profession");
-
-      // 2. Execute POST Request
-      final response = await _dio.post(
-        url,
-        data: formData,
-      );
-
-      // 3. Log and Parse Response
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint("✅ DEBUG: [API] Profile Creation Success");
-        debugPrint("📄 DEBUG: [API] Response Data: ${response.data}");
-
-        // Map the dynamic map to your Modal class
-        return createProfessionalResModal.fromJson(response.data);
-      } else {
-        debugPrint("⚠️ DEBUG: [API] Unexpected Status Code: ${response.statusCode}");
-        return createProfessionalResModal.fromJson(response.data);
+      // 2. Attach Image as Multipart if exists
+      if (imageFile != null) {
+        map["image"] = await MultipartFile.fromFile(
+            imageFile.path,
+            filename: "professional_profile_${DateTime.now().millisecondsSinceEpoch}.jpg"
+        );
       }
 
-    } on DioException catch (e) {
-      debugPrint("💥 DEBUG: [DioException] at $url");
+      FormData payload = FormData.fromMap(map);
 
-      if (e.response != null) {
-        debugPrint("❌ DEBUG: Status Code: ${e.response?.statusCode}");
-        debugPrint("❌ DEBUG: Server Error: ${e.response?.data}");
+      // ─── DEBUG PLAYLOAD PRINT START ───
+      debugPrint("╔══════════════ 👷 PROFESSIONAL REGISTRATION ══════════════╗");
+      debugPrint("║ 🔗 URL: $url");
+      debugPrint("╟──────────────────────────────────────────────────────────");
 
-        // Even on error, try to parse the message from the server into your modal
-        try {
-          return createProfessionalResModal.fromJson(e.response?.data);
-        } catch (mapError) {
-          debugPrint("❌ DEBUG: Parsing Error: $mapError");
-          return null;
+      // Print text fields
+      for (var field in payload.fields) {
+        debugPrint("║ 🔑 ${field.key.padRight(18)} : ${field.value}");
+      }
+
+      // Print file info
+      if (payload.files.isNotEmpty) {
+        for (var file in payload.files) {
+          debugPrint("║ 📄 ${file.key.padRight(18)} : [FILE] ${file.value.filename}");
         }
       } else {
-        debugPrint("❓ DEBUG: Connection Error: ${e.message}");
-        return null;
+        debugPrint("║ 📄 image              : No image attached");
       }
+      debugPrint("╚══════════════════════════════════════════════════════════╝");
+      // ─── DEBUG PLAYLOAD PRINT END ───
+
+      // 3. Execute Request
+      final response = await _dio.post(url, data: payload);
+
+      // ─── DEBUG RESPONSE PRINT ───
+      debugPrint("✅ [SERVER RESPONSE]: ${response.data}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data['status'] == true) {
+          return response.data;
+        }
+      }
+      return null;
 
     } catch (e) {
-      debugPrint("💀 DEBUG: Unexpected Error: $e");
+      debugPrint("💀 [API FATAL ERROR]: $e");
+
+      // Detailed error logging for validation issues (e.g., 422 errors)
+      if (e is DioException && e.response != null) {
+        debugPrint("╔══════════════ 🚫 SERVER ERROR DETAIL ══════════════╗");
+        debugPrint("║ Status Code : ${e.response?.statusCode}");
+        debugPrint("║ Error Data  : ${e.response?.data}");
+        debugPrint("╚════════════════════════════════════════════════════╝");
+      }
       return null;
     }
   }
-
 
 
   Future<createServiceResModal?> addService({
@@ -651,36 +664,509 @@ class ApiService {
   Future<CreateBookingResModal?> createBooking({
     required int userId,
     required int serviceId,
+    required int ownerId,
     required String date,
     required String time,
+    required int professionalId, // Changed to camelCase for standard Dart style
     required String address,
-  }) async {
+  }) async
+  {
     final String url = "${ApiEndoint.baseUrl.trim()}${ApiEndoint.createBooking.trim()}";
 
     try {
-      // ─── UPDATED KEYS BASED ON SERVER ERROR ───
-      final Map<String, dynamic> payload = {
-        "user_id": userId,       // 'user_id' ko 'customer' kar diya
-        "service_id": serviceId,     // 'service_id' ko 'service' kar diya
+      // 1. Construct the FormData
+      FormData payload = FormData.fromMap({
+        "customer_id": userId,
+        "service_id": serviceId,
+        "owner_id": ownerId,
         "booking_date": date,
         "booking_time": time,
+        "professional_id": professionalId,
         "address": address,
-      };
+        "status": "pending",
+      });
 
-      debugPrint("--------------------------------------------------");
-      debugPrint("🚀 [API REQUEST] PAYLOAD: $payload");
-      debugPrint("--------------------------------------------------");
+      // ─── DEBUG PRINT START ───
+      // ─── DEBUG PRINT START ───
+      debugPrint("╔══════════════ 📦 DECODED PAYLOAD ══════════════╗");
+      debugPrint("║ URL: $url");
+
+// 1. Print Text Fields
+      for (var field in payload.fields) {
+        debugPrint("║ 🔑 ${field.key.padRight(15)} : ${field.value}");
+      }
+
+// 2. Print Files (If any)
+      for (var file in payload.files) {
+        debugPrint("║ 📄 ${file.key.padRight(15)} : [FILE] ${file.value.filename}");
+      }
+
+      debugPrint("╚═════════════════════════════════════════════════╝");
+// ─── DEBUG PRINT END ───
+      // ─── DEBUG PRINT END ───
 
       final response = await _dio.post(url, data: payload);
 
-      debugPrint("📄 [API RESPONSE] DATA: ${response.data}");
+      debugPrint("📄 [API RESPONSE]: ${response.data}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return CreateBookingResModal.fromJson(response.data);
       }
+
       return null;
     } catch (e) {
       debugPrint("💀 [API ERROR]: $e");
+      // If it's a DioError, we can see the server's error message
+      if (e is DioException && e.response != null) {
+        debugPrint("🚫 Server Error Data: ${e.response?.data}");
+      }
+      return null;
+    }
+  }
+
+
+
+  // ─── FETCH CUSTOMER BOOKINGS ───
+  static Future<customerBookingListModal?> fetchCustomerBookings(int userId) async {
+    final String url = "${ApiEndoint.baseUrl.trim()}${ApiEndoint.customerBookingList.trim()}";
+
+    try {
+      // ─── QUERY PARAMETERS ───
+      final Map<String, dynamic> params = {
+        "customer_id": userId,
+      };
+
+      debugPrint("📡 [API REQUEST] Fetching Bookings");
+      debugPrint("🔗 URL: $url");
+      debugPrint("❓ PARAMS: $params");
+
+      // Pass the params map to the queryParameters argument
+      final response = await _dio.get(
+        url,
+        queryParameters: params,
+      );
+
+      // ─── DEBUG PRINT RESPONSE ───
+      debugPrint("✅ [API RESPONSE] Status Code: ${response.statusCode}");
+      debugPrint("📄 [DATA]: ${response.data}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return customerBookingListModal.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      debugPrint("💀 [API ERROR]: $e");
+      if (e is DioException && e.response != null) {
+        debugPrint("🚫 Server Error Data: ${e.response?.data}");
+        debugPrint("🚫 Status Code: ${e.response?.statusCode}");
+      }
+      return null;
+    }
+  }
+
+
+  // ─── FETCH OWNER BOOKINGS ───
+  static Future<OwnerBookingListModal?> fetchOwnerBookings(int ownerId) async {
+    final String url = "${ApiEndoint.baseUrl.trim()}${ApiEndoint.ownerBookingList.trim()}";
+
+    try {
+      // ─── QUERY PARAMETERS ───
+      final Map<String, dynamic> params = {
+        "owner_id": ownerId,
+      };
+
+      debugPrint("🏢 [API REQUEST] Fetching Owner Bookings");
+      debugPrint("🔗 URL: $url");
+      debugPrint("❓ PARAMS: $params");
+
+      final response = await _dio.get(
+        url,
+        queryParameters: params,
+      );
+
+      // ─── DEBUG PRINT RESPONSE ───
+      debugPrint("✅ [API RESPONSE] Status Code: ${response.statusCode}");
+      // Using a snippet of data to avoid flooding the console if the list is huge
+      debugPrint("📄 [DATA]: ${response.data}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return OwnerBookingListModal.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      debugPrint("💀 [API ERROR]: $e");
+      if (e is DioException && e.response != null) {
+        debugPrint("🚫 Server Error Data: ${e.response?.data}");
+      }
+      return null;
+    }
+  }
+
+
+
+  // ─── UPDATE BOOKING STATUS ───
+  static Future<bool> updateBookingStatus({
+    required int bookingId,
+    required String status, // 'pending', 'accepted', 'completed', 'cancelled'
+  }) async
+  {
+    final String url = "${ApiEndoint.baseUrl.trim()}${ApiEndoint.updateStatus.trim()}";
+
+    try {
+      // 1. Construct the FormData Payload
+      FormData payload = FormData.fromMap({
+        "booking_id": bookingId,
+        "status": status,
+      });
+
+      // ─── DEBUG PRINT PAYLOAD ───
+      debugPrint("🔄 [API REQUEST] Updating Booking Status");
+      debugPrint("🔗 URL: $url");
+      for (var field in payload.fields) {
+        debugPrint("║ 🔑 ${field.key.padRight(12)} : ${field.value}");
+      }
+
+      // 2. Execute POST request
+      final response = await _dio.post(url, data: payload);
+
+      // ─── DEBUG PRINT RESPONSE ───
+      debugPrint("✅ [API RESPONSE]: ${response.data}");
+
+      // 3. Handle specific Boolean status from your JSON
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data['status'] == true) {
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      debugPrint("💀 [API ERROR]: $e");
+      if (e is DioException && e.response != null) {
+        debugPrint("🚫 Server Message: ${e.response?.data}");
+      }
+      return false;
+    }
+  }
+
+
+
+// ─── ADD SERVICE REVIEW ───
+  static Future<Map<String, dynamic>?> addReview({
+    required int bookingId,
+    required int userId,
+    required int serviceId,
+    required int rating,
+    required String comment,
+  }) async
+  {
+    final String url = "${ApiEndoint.baseUrl.trim()}${ApiEndoint.addReview.trim()}";
+
+    try {
+      // 1. Construct the FormData Payload
+      FormData payload = FormData.fromMap({
+        "booking_id": bookingId,
+        "user_id": userId,
+        "service_id": serviceId,
+        "rating": rating,
+        "comment": comment,
+      });
+
+      // ─── DEBUG PRINT PAYLOAD (Playload) ───
+      debugPrint("⭐ [API REQUEST] Adding Review");
+      debugPrint("🔗 URL: $url");
+      for (var field in payload.fields) {
+        debugPrint("║ 🔑 ${field.key.padRight(12)} : ${field.value}");
+      }
+
+      // 2. Execute POST request
+      final response = await _dio.post(url, data: payload);
+
+      // ─── DEBUG PRINT RESPONSE ───
+      debugPrint("✅ [API RESPONSE]: ${response.data}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data['status'] == true) {
+          return response.data; // Returns the full map containing message and review_id
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint("💀 [API ERROR]: $e");
+      if (e is DioException && e.response != null) {
+        debugPrint("🚫 Server Error Data: ${e.response?.data}");
+      }
+      return null;
+    }
+  }
+
+
+  // ─── FETCH REVIEWS ───
+  static Future<reviewListModal?> fetchReviews(int ownerId) async {
+    final String url = "${ApiEndoint.baseUrl.trim()}${ApiEndoint.reviewList.trim()}";
+
+    try {
+      // ─── QUERY PARAMETERS ───
+      final Map<String, dynamic> params = {
+        "service_id": ownerId, // Passing owner_id to see all reviews for that salon
+      };
+
+      debugPrint("💬 [API REQUEST] Fetching Review List");
+      debugPrint("🔗 URL: $url");
+      debugPrint("❓ PARAMS: $params");
+
+      final response = await _dio.get(
+        url,
+        queryParameters: params,
+      );
+
+      // ─── DEBUG PRINT RESPONSE ───
+      debugPrint("✅ [API RESPONSE] Status Code: ${response.statusCode}");
+      debugPrint("📄 [DATA]: ${response.data}");
+
+      if (response.statusCode == 200) {
+        return reviewListModal.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      debugPrint("💀 [API ERROR]: $e");
+      if (e is DioException && e.response != null) {
+        debugPrint("🚫 Server Error Data: ${e.response?.data}");
+      }
+      return null;
+    }
+  }
+
+
+  // ─── EDIT PROFILE API (With Image Support) ───
+  static Future<Map<String, dynamic>?> editProfile({
+    required int userId,
+    required String name,
+    required String email,
+    required String phone,
+    dynamic imageFile, // Can be XFile (from image_picker) or File
+  }) async {
+    // Ensure the endpoint matches your backend route
+    final String url = "${ApiEndoint.baseUrl.trim()}${ApiEndoint.editcustomer}";
+
+    try {
+      // 1. Prepare the base map
+      Map<String, dynamic> map = {
+        "user_id": userId,
+        "name": name,
+        "email": email,
+        "phone": phone,
+      };
+
+      // 2. Attach image if the user selected one
+      if (imageFile != null) {
+        map["image"] = await MultipartFile.fromFile(
+            imageFile.path,
+            filename: "profile_${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg"
+        );
+      }
+
+      FormData payload = FormData.fromMap(map);
+
+      // ─── DEBUG PLAYLOAD PRINT START ───
+      debugPrint("╔══════════════ 👤 EDIT PROFILE REQUEST ══════════════╗");
+      debugPrint("║ 🔗 URL: $url");
+      debugPrint("╟──────────────────────────────────────────────────────");
+
+      for (var field in payload.fields) {
+        debugPrint("║ 🔑 ${field.key.padRight(15)} : ${field.value}");
+      }
+
+      if (payload.files.isNotEmpty) {
+        for (var file in payload.files) {
+          debugPrint("║ 📄 ${file.key.padRight(15)} : [FILE] ${file.value.filename}");
+        }
+      } else {
+        debugPrint("║ 📄 image           : No new image selected");
+      }
+      debugPrint("╚══════════════════════════════════════════════════════╝");
+      // ─── DEBUG PLAYLOAD PRINT END ───
+
+      // 3. Execute POST request
+      final response = await _dio.post(url, data: payload);
+
+      debugPrint("✅ [SERVER RESPONSE]: ${response.data}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data['status'] == true) {
+          return response.data; // Returns the updated user data
+        }
+      }
+      return null;
+
+    } catch (e) {
+      debugPrint("💀 [EDIT PROFILE ERROR]: $e");
+      if (e is DioException && e.response != null) {
+        debugPrint("🚫 Server Error: ${e.response?.data}");
+      }
+      return null;
+    }
+  }
+
+
+  // ─── GET USER PROFILE (GET METHOD) ───
+  static Future<UserProfileModal?> fetchProfile(int userId) async {
+    final String url = "${ApiEndoint.baseUrl.trim()}${ApiEndoint.userData}";
+
+    try {
+      // ─── DEBUG REQUEST START ───
+      debugPrint("🔍 [API REQUEST] Fetching Profile...");
+      debugPrint("║ 🔗 URL    : $url");
+      debugPrint("║ 🔑 Params : {user_id: $userId}");
+      debugPrint("╚═══════════════════════════════════════╝");
+
+      final response = await _dio.get(
+        url,
+        queryParameters: {
+          "user_id": userId, // Dio adds this as ?user_id=3
+        },
+      );
+
+      // ─── DEBUG RESPONSE ───
+      debugPrint("✅ [SERVER RESPONSE]: ${response.data}");
+
+      if (response.statusCode == 200) {
+        return UserProfileModal.fromJson(response.data);
+      }
+      return null;
+
+    } catch (e) {
+      debugPrint("💀 [GET PROFILE ERROR]: $e");
+      if (e is DioException && e.response != null) {
+        debugPrint("║ 🚫 Error Data : ${e.response?.data}");
+      }
+      return null;
+    }
+  }
+
+
+  // ─── FETCH REVIEWS LIST (GET) ───
+  static Future<ReviewModal?> ownerfetchReviews(int ownerId) async {
+    // Endpoint adjust kar lena agar backend par different ho
+    final String url = "${ApiEndoint.baseUrl.trim()}owner-reviews";
+
+    try {
+      // ─── DEBUG REQUEST START ───
+      debugPrint("💬 [API REQUEST] Fetching Client Feedback...");
+      debugPrint("║ 🔗 URL    : $url");
+      debugPrint("║ 🔑 Params : {owner_id: $ownerId}");
+      debugPrint("╚═══════════════════════════════════════╝");
+
+      final response = await _dio.get(
+        url,
+        queryParameters: {
+          "owner_id": ownerId, // Professional/Owner ID ke basis par reviews fetch honge
+        },
+      );
+
+      // ─── DEBUG RESPONSE ───
+      debugPrint("✅ [REVIEWS RESPONSE]: ${response.data}");
+
+      if (response.statusCode == 200) {
+        return ReviewModal.fromJson(response.data);
+      }
+      return null;
+
+    } catch (e) {
+      debugPrint("💀 [REVIEWS ERROR]: $e");
+      if (e is DioException && e.response != null) {
+        debugPrint("║ 🚫 Error : ${e.response?.data}");
+      }
+      return null;
+    }
+  }
+
+
+  // --- FETCH OWNER EARNINGS (GET) ---
+  static Future<OwnerEarningModal?> fetchOwnerEarnings(int ownerId) async {
+    final String url = "${ApiEndoint.baseUrl.trim()}owner-earning";
+
+    try {
+      final response = await _dio.get(
+        url,
+        queryParameters: {"owner_id": ownerId},
+      );
+
+      if (response.statusCode == 200) {
+        return OwnerEarningModal.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      debugPrint("💀 Earning Fetch Error: $e");
+      return null;
+    }
+  }
+
+
+
+
+  // ─── FETCH OWNER EARNING LIST (GET) ───
+  static Future<OwnerEarningListModal?> fetchOwnerEarningList(int ownerId) async {
+    final String url = "${ApiEndoint.baseUrl.trim()}owner-earning-list";
+
+    try {
+      debugPrint("💰 [API REQUEST] Fetching Earning History...");
+      debugPrint("║ 🔗 URL: $url?owner_id=$ownerId");
+
+      final response = await _dio.get(
+        url,
+        queryParameters: {"owner_id": ownerId},
+      );
+
+      debugPrint("✅ [SERVER RESPONSE]: ${response.data}");
+
+      if (response.statusCode == 200) {
+        return OwnerEarningListModal.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      debugPrint("💀 [EARNING LIST ERROR]: $e");
+      return null;
+    }
+  }
+
+
+  // ─── DELETE SERVICE (POST/FormData) ───
+  Future<Map<String, dynamic>?> deleteService(int serviceId) async {
+    final String url = "${ApiEndoint.baseUrl.trim()}delete-service";
+
+    try {
+      debugPrint("🗑️ [API REQUEST] Deleting Service...");
+      debugPrint("║ 🔗 URL: $url");
+      debugPrint("║ 📦 Service ID: $serviceId");
+
+      FormData formData = FormData.fromMap({
+        "service_id": serviceId,
+      });
+
+      final response = await _dio.post(url, data: formData);
+
+      debugPrint("✅ [DELETE RESPONSE]: ${response.data}");
+
+      if (response.statusCode == 200) {
+        return response.data;
+      }
+      return null;
+    } catch (e) {
+      debugPrint("💀 [DELETE ERROR]: $e");
+      return null;
+    }
+  }
+
+
+  // ─── CHECK OWNER STATUS (GET) ───
+  static Future<Map<String, dynamic>?> checkOwnerStatus(int ownerId) async {
+    final String url = "${ApiEndoint.baseUrl.trim()}check-owner-active";
+    try {
+      final response = await _dio.get(url, queryParameters: {"owner_id": ownerId});
+      if (response.statusCode == 200) return response.data;
+      return null;
+    } catch (e) {
+      debugPrint("💀 Status Check Error: $e");
       return null;
     }
   }

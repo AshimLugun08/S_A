@@ -113,11 +113,7 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       if (mounted && (response.statusCode == 200 || response.statusCode == 201)) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const MainNavigation()),
-              (route) => false,
-        );
+        Navigator.pop(context);
       }
     } catch (e) {
       debugPrint("Signup Error: $e");

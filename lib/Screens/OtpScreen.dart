@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:s_a/Screens/BottomNavComp.dart';
+import 'package:s_a/Screens/Service_Provider/PendinngScreen.dart';
 import 'package:s_a/Screens/Service_Provider/bottom_nav.dart';
 import 'package:s_a/const/color/colors.dart';
 import 'package:s_a/const/endpoint/ApiService.dart';
@@ -81,7 +82,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
 
         Widget targetScreen;
         if (role == "owner" || role == "service_provider") {
-          targetScreen = const MainContainer(); // Provider App
+          targetScreen = const PendingApprovalScreen(); // Provider App
         } else {
           targetScreen = const MainNavigation(); // Customer App
         }

@@ -1,87 +1,137 @@
 import 'package:flutter/material.dart';
+import 'package:s_a/const/Modal/earningListModal.dart';
 import 'package:s_a/const/color/colors.dart';
-// import 'package:your_project/const/color/colors.dart'; // Apna path check karein
+import 'package:s_a/const/endpoint/ApiService.dart';
+import 'package:s_a/const/session/session.dart';
 
-class EarningsScreen extends StatelessWidget {
+class EarningsScreen extends StatefulWidget {
   const EarningsScreen({super.key});
+
+  @override
+  State<EarningsScreen> createState() => _EarningsScreenState();
+}
+
+class _EarningsScreenState extends State<EarningsScreen> {
+  // ── 1. STATE VARIABLES ──
+  bool _isLoading = true;
+  double _totalEarnings = 0.0;
+  int _totalBookings = 0;
+  List<EarningItem> _activities = [];
+  String _ownerName = "Pro";
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEarningsData();
+  }
+
+  // ── 2. FETCH DATA FROM API ──
+  Future<void> _fetchEarningsData() async {
+    try {
+      final userData = await UserPref.getUser();
+      final int ownerId = userData['userId'] ?? 0;
+
+      if (ownerId != 0) {
+        final response = await ApiService.fetchOwnerEarningList(ownerId);
+
+        if (response != null && response.status == true) {
+          setState(() {
+            _totalEarnings = response.totalEarning ?? 0.0;
+            _totalBookings = response.totalBookings ?? 0;
+            _activities = response.data ?? [];
+            _ownerName = response.ownerName ?? "Pro";
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("💀 Earnings Screen Error: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _buildAppBar(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- TOTAL EARNINGS GRADIENT CARD ---
-            _buildTotalEarningsCard(),
-            const SizedBox(height: 30),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : RefreshIndicator(
+        onRefresh: _fetchEarningsData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- TOTAL EARNINGS CARD ---
+              _buildTotalEarningsCard(),
+              const SizedBox(height: 30),
 
-            // --- EARNING INSIGHTS (BAR CHART) ---
-            _buildEarningInsightsHeader(),
-            const SizedBox(height: 20),
-            _buildBarChart(),
-            const SizedBox(height: 30),
+              // --- EARNING INSIGHTS ---
+              _buildEarningInsightsHeader(),
+              const SizedBox(height: 20),
+              _buildBarChart(), // Mock chart logic stays for UI
+              const SizedBox(height: 30),
 
-            // --- RECENT ACTIVITY ---
-            _buildRecentActivityHeader(),
-            const SizedBox(height: 16),
-            _buildActivityItem(
-              icon: Icons.work,
-              title: "Professional Cleaning",
-              subtitle: "Yesterday, 4:30 PM",
-              amount: "+\$120.00",
-              status: "COMPLETED",
-              isPositive: true,
-            ),
-            _buildActivityItem(
-              icon: Icons.payments_outlined,
-              title: "Weekly Payout",
-              subtitle: "Oct 12, 2023",
-              amount: "-\$1,840.00",
-              status: "WITHDRAWN",
-              isPositive: false,
-            ),
-            _buildActivityItem(
-              icon: Icons.build_circle_outlined,
-              title: "Furniture Assembly",
-              subtitle: "Oct 10, 2023",
-              amount: "+\$85.50",
-              status: "COMPLETED",
-              isPositive: true,
-            ),
+              // --- RECENT ACTIVITY ---
+              _buildRecentActivityHeader(),
+              const SizedBox(height: 16),
 
-            const SizedBox(height: 20),
+              _activities.isEmpty
+                  ? const Center(child: Text("No recent bookings found."))
+                  : ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _activities.length,
+                itemBuilder: (context, index) {
+                  final item = _activities[index];
+                  return _buildActivityItem(
+                    icon: Icons.history,
+                    title: item.serviceName ?? "Service",
+                    subtitle: "Customer: ${item.customerName}\n${item.bookingDate} | ${item.bookingTime}",
+                    amount: "₹${item.amount}",
+                    status: "SUCCESS", // Mock status
+                    isPositive: true,
+                  );
+                },
+              ),
 
-            // --- WITHDRAWAL BUTTON ---
-            _buildWithdrawalButton(),
-            const SizedBox(height: 100), // Bottom nav space
-          ],
+              const SizedBox(height: 20),
+              _buildWithdrawalButton(),
+              const SizedBox(height: 100),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ── APP BAR ──
+  // ── UI COMPONENTS (UPDATED WITH DATA) ──
+
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
       leading: const Padding(
         padding: EdgeInsets.all(8.0),
-        child: CircleAvatar(backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=a')),
+        child: CircleAvatar(backgroundImage: AssetImage('assets/images/user.png')),
       ),
-      title: const Text("Fluid Marketplace",
-          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Earnings", style: TextStyle(color: Colors.grey, fontSize: 12)),
+          Text(_ownerName, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16)),
+        ],
+      ),
       actions: [
         IconButton(onPressed: () {}, icon: const Icon(Icons.notifications_none, color: AppColors.iconSecondary)),
       ],
     );
   }
 
-  // ── TOTAL EARNINGS CARD ──
   Widget _buildTotalEarningsCard() {
     return Container(
       width: double.infinity,
@@ -97,16 +147,16 @@ class EarningsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Total Earnings", style: TextStyle(color: Colors.white70, fontSize: 16)),
+          const Text("Balance Amount", style: TextStyle(color: Colors.white70, fontSize: 16)),
           const SizedBox(height: 8),
-          const Text("\$12,840.50",
-              style: TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.bold)),
+          Text("₹${_totalEarnings.toStringAsFixed(2)}",
+              style: const TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.bold)),
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(child: _subEarningBox("Monthly", "\$2,450.00")),
+              Expanded(child: _subEarningBox("Total Bookings", "$_totalBookings")),
               const SizedBox(width: 15),
-              Expanded(child: _subEarningBox("Pending", "\$420.15")),
+              Expanded(child: _subEarningBox("Pending", "₹0.00")),
             ],
           )
         ],
@@ -117,10 +167,7 @@ class EarningsScreen extends StatelessWidget {
   Widget _subEarningBox(String title, String amount) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -132,7 +179,6 @@ class EarningsScreen extends StatelessWidget {
     );
   }
 
-  // ── BAR CHART SECTION ──
   Widget _buildEarningInsightsHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -141,7 +187,7 @@ class EarningsScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(color: AppColors.secondary, borderRadius: BorderRadius.circular(20)),
-          child: const Text("This Month", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+          child: const Text("Weekly", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
         ),
       ],
     );
@@ -154,42 +200,30 @@ class EarningsScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(24)),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: List.generate(7, (index) {
-              bool isSelected = index == 3; // Thursday highlighted
-              return Column(
-                children: [
-                  if (isSelected)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: const Color(0xFF333333), borderRadius: BorderRadius.circular(6)),
-                      child: const Text("\$840", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ),
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 120 * values[index],
-                    width: 35,
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primaryDark : AppColors.background,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(days[index], style: TextStyle(fontSize: 10, color: isSelected ? AppColors.primary : Colors.grey, fontWeight: FontWeight.bold)),
-                ],
-              );
-            }),
-          ),
-        ],
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: List.generate(7, (index) {
+          bool isSelected = index == 3;
+          return Column(
+            children: [
+              Container(
+                height: 100 * values[index],
+                width: 30,
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primaryDark : AppColors.background,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(days[index], style: TextStyle(fontSize: 10, color: isSelected ? AppColors.primary : Colors.grey, fontWeight: FontWeight.bold)),
+            ],
+          );
+        }),
       ),
     );
   }
 
-  // ── RECENT ACTIVITY ──
   Widget _buildRecentActivityHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -225,8 +259,7 @@ class EarningsScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(amount,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: isPositive ? AppColors.primaryDark : Colors.black87)),
+              Text(amount, style: TextStyle(fontWeight: FontWeight.bold, color: isPositive ? AppColors.primaryDark : Colors.black87)),
               const SizedBox(height: 4),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -240,7 +273,6 @@ class EarningsScreen extends StatelessWidget {
     );
   }
 
-  // ── WITHDRAWAL BUTTON ──
   Widget _buildWithdrawalButton() {
     return Container(
       width: double.infinity,
@@ -254,11 +286,7 @@ class EarningsScreen extends StatelessWidget {
         onPressed: () {},
         icon: const Icon(Icons.account_balance_wallet, color: Colors.white),
         label: const Text("Withdrawal Request", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
       ),
     );
   }

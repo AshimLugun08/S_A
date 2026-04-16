@@ -62,7 +62,7 @@ class _FacialSelectionScreenState extends State<FacialSelectionScreen> {
               height: 55,
               child: ElevatedButton(
                 onPressed: () {
-                 Navigator.push(context, MaterialPageRoute(builder: (context)=>ServiceDetailScreen()));
+                 // Navigator.push(context, MaterialPageRoute(builder: (context)=>ServiceDetailScreen(serviceId: ,)));
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,

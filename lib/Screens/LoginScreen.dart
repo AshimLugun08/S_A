@@ -17,53 +17,58 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _phoneController = TextEditingController();
   bool _isLoading = false;
 
+  // ── ROLE STATE ──
+  // false = Customer, true = Owner
+  bool _isOwner = false;
 
-  // Inside _LoginScreenState
   Future<void> _handleSendOtp() async {
     final phone = _phoneController.text.trim();
+    // Determine role string based on toggle
+    final String selectedRole = _isOwner ? "owner" : "customer";
 
     if (phone.isEmpty || phone.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter a valid mobile number")),
+        const SnackBar(content: Text("Please enter a valid 10-digit mobile number")),
       );
       return;
     }
 
-    // Show loading dialog or state
     setState(() => _isLoading = true);
 
     try {
-      // Determine role based on which button or context (Defaulting to customer here)
+      debugPrint("📡 Sending OTP to $phone as $selectedRole");
+
       final response = await ApiService().sendOtp(
           phone: phone,
-          role: "customer" // Or "service_provider" based on your logic
+          role: selectedRole
       );
 
-      if (response != null && response.data['status'] == true) {
-        // SUCCESS
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response.data['message'] ?? "OTP Sent")),
-        );
+      if (mounted) {
+        if (response != null && response.data['status'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response.data['message'] ?? "OTP Sent Successfully")),
+          );
 
-        // Navigate to OTP Verification Screen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VerifyOtpScreen(
-              phone: phone,
-              // If backend sends OTP in response (for testing), pass it
-              serverOtp: response.data['otp'].toString(),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VerifyOtpScreen(
+                phone: phone,
+                serverOtp: response.data['otp'].toString(),
+             // Pass role to next screen if needed for verification
+              ),
             ),
-          ),
-        );
-      } else {
-        // FAIL
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response?.data['message'] ?? "Failed to send OTP")),
-        );
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response?.data['message'] ?? "Account not found or Error")),
+          );
+        }
       }
+    } catch (e) {
+      debugPrint("💀 Login Error: $e");
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -76,146 +81,28 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30.0),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 40),
-
-                // ── TOP ILLUSTRATION ──
-                Image.asset(
-                  'assets/images/loginimg.png',
-                  height: 200,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.mobile_friendly, size: 100, color: AppColors.primary),
-                ),
-
+                _buildHeaderIllustration(),
                 const SizedBox(height: 20),
-
-                // ── TITLE ──
-                const Text(
-                  "Login Account",
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  height: 4,
-                  width: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.accent,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // ── SUBTITLE ──
-                const Text(
-                  "Please enter your mobile\nnumber to get an OTP",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: AppColors.textSecondary,
-                    height: 1.5,
-                  ),
-                ),
-
+                _buildTitleSection(),
                 const SizedBox(height: 30),
 
-                // ── PHONE INPUT FIELD ──
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      )
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1),
-                    decoration: InputDecoration(
-                      hintText: "+91 000 0000 000",
-                      prefixIcon: const Icon(Icons.phone_android, color: AppColors.primary, size: 20),
-                      hintStyle: TextStyle(color: Colors.grey.withOpacity(0.5)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 18),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
+                // ── ROLE SELECTION TOGGLE ──
+                _buildRoleToggle(),
+
+                const SizedBox(height: 25),
+
+                // ── PHONE INPUT ──
+                _buildPhoneInput(),
 
                 const SizedBox(height: 40),
 
                 // ── NEXT BUTTON ──
-                SizedBox(
-                  width: double.infinity,
-                  height: 60,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleSendOtp, // Disable button while loading
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                      elevation: 0,
-                      disabledBackgroundColor: AppColors.primary.withOpacity(0.6), // Stay blue but faded
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                      height: 24, width: 24,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                        : const Text(
-                      "Next",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                  ),
-                ),
+                _buildSubmitButton(),
 
                 const SizedBox(height: 40),
-
-                const Text(
-                  "Don't have an account?",
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-                ),
-
-                const SizedBox(height: 15),
-
-                // ── SIGNUP BUTTONS ──
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildSignupButton(
-                        title: "Customer",
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const SignupScreen()),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: _buildSignupButton(
-                        title: "Provider",
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const IdentityTrustScreen()),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                _buildSignupFooter(),
                 const SizedBox(height: 30),
               ],
             ),
@@ -225,24 +112,139 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── REUSABLE SIGNUP BUTTON HELPER ──
-  Widget _buildSignupButton({required String title, required VoidCallback onTap}) {
+  // ── UI COMPONENTS ──
+
+  Widget _buildRoleToggle() {
+    return Container(
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(35),
+      ),
+      child: Row(
+        children: [
+          _roleOption("Customer", !_isOwner, () => setState(() => _isOwner = false)),
+          _roleOption("Provider/Owner", _isOwner, () => setState(() => _isOwner = true)),
+        ],
+      ),
+    );
+  }
+
+  Widget _roleOption(String label, bool isActive, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: isActive ? [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isActive ? Colors.white : Colors.grey.shade600,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhoneInput() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))],
+      ),
+      child: TextField(
+        controller: _phoneController,
+        keyboardType: TextInputType.phone,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
+        style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5),
+        decoration: InputDecoration(
+          hintText: "Enter Mobile Number",
+          prefixIcon: const Icon(Icons.phone_android, color: AppColors.primary, size: 20),
+
+          prefixStyle: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          hintStyle: TextStyle(color: Colors.grey.withOpacity(0.5), letterSpacing: 0),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 18),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 60,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _handleSendOtp,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          elevation: 0,
+        ),
+        child: _isLoading
+            ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : const Text("Get OTP", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+      ),
+    );
+  }
+
+  // ── HELPER WIDGETS ──
+
+  Widget _buildHeaderIllustration() {
+    return Image.asset(
+      'assets/images/loginimg.png',
+      height: 180,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) => const Icon(Icons.security, size: 100, color: AppColors.primary),
+    );
+  }
+
+  Widget _buildTitleSection() {
+    return Column(
+      children: [
+        const Text("Welcome Back", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+        const SizedBox(height: 8),
+        const Text("Select your role and enter number to continue", textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+      ],
+    );
+  }
+
+  Widget _buildSignupFooter() {
+    return Column(
+      children: [
+        const Text("Don't have an account?", style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(child: _signupBtn("Customer", () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SignupScreen())))),
+            const SizedBox(width: 15),
+            Expanded(child: _signupBtn("Provider", () => Navigator.push(context, MaterialPageRoute(builder: (context) => const IdentityTrustScreen())))),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _signupBtn(String title, VoidCallback onTap) {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: AppColors.primary, width: 1.5),
-        padding: const EdgeInsets.symmetric(vertical: 15),
+        side: const BorderSide(color: AppColors.primary),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+        padding: const EdgeInsets.symmetric(vertical: 12),
       ),
-      child: Text(
-        "Signup as $title",
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: AppColors.primary,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
+      child: Text("Signup $title", style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
     );
   }
 }

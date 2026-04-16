@@ -22,7 +22,7 @@ class _MainNavigationState extends State<MainNavigation> {
     const HomeScreen(),     // Replace with HomeScreen()
     const BookingScreen(), // Replace with BookingScreen()
     const OfferScreen(),  // Replace with OfferScreen()
-    const ChatScreen(),     // Replace with ChatScreen()
+    // const ChatScreen(),     // Replace with ChatScreen()
     const ProfileScreen()  // Replace with ProfileScreen()
   ];
 
@@ -85,11 +85,11 @@ class _MainNavigationState extends State<MainNavigation> {
               activeIcon: Image.asset('assets/icons/offer.png', height: 40),
               label: 'Offer',
             ),
-            BottomNavigationBarItem(
-              icon: Image.asset('assets/icons/chat.png', height: 35),
-              activeIcon: Image.asset('assets/icons/chat.png', height: 40),
-              label: 'Chat',
-            ),
+            // BottomNavigationBarItem(
+            //   icon: Image.asset('assets/icons/chat.png', height: 35),
+            //   activeIcon: Image.asset('assets/icons/chat.png', height: 40),
+            //   label: 'Chat',
+            // ),
             BottomNavigationBarItem(
               icon: Image.asset('assets/icons/profile.png', height: 35),
               activeIcon: Image.asset('assets/icons/profile.png', height: 40),

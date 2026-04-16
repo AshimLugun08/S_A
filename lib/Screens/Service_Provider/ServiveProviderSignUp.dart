@@ -2,7 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:country_state_city/country_state_city.dart' as csc;
-import 'package:s_a/const/Modal/serviceListModal.dart';
+import 'package:s_a/const/Modal/categoryListModal.dart';
+import 'package:s_a/const/color/colors.dart';
 import 'package:s_a/const/endpoint/ApiService.dart';
 import 'package:s_a/Screens/Service_Provider/bottom_nav.dart';
 
@@ -43,12 +44,14 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
   RegionState? _selectedState;
   RegionCity? _selectedCity;
 
+  // --- CONTROLLERS ---
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _stateController = TextEditingController();
+  final TextEditingController _adharController = TextEditingController(); // 👈 Added Aadhar Controller
 
   @override
   void initState() {
@@ -65,15 +68,14 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
     _addressController.dispose();
     _cityController.dispose();
     _stateController.dispose();
+    _adharController.dispose(); // 👈 Dispose Aadhar
     super.dispose();
   }
 
-  // ✅ CORRECT: async with await — as per 0.1.6 docs
   Future<void> _loadIndiaStates() async {
     setState(() => _isLoadingStates = true);
     try {
       final rawStates = await csc.getStatesOfCountry('IN');
-      debugPrint("✅ States loaded: ${rawStates.length}");
       if (mounted) {
         setState(() {
           _states = rawStates.map((s) => RegionState.fromCsc(s)).toList();
@@ -86,7 +88,6 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
     }
   }
 
-  // ✅ CORRECT: getStateCities(countryCode, stateCode) — as per 0.1.6 docs
   Future<void> _loadCities(String stateCode) async {
     setState(() {
       _isLoadingCities = true;
@@ -96,7 +97,6 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
     });
     try {
       final rawCities = await csc.getStateCities('IN', stateCode);
-      debugPrint("✅ Cities loaded: ${rawCities.length}");
       if (mounted) {
         setState(() {
           _cities = rawCities.map((c) => RegionCity.fromCsc(c)).toList();
@@ -112,7 +112,7 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
   Future<void> _fetchServices() async {
     setState(() => _isFetchingServices = true);
     try {
-      final response = await ApiService.fetchServiceList();
+      final response = await ApiService.fetchCategoryList();
       if (response != null && response.status == true) {
         setState(() => _services = response.data ?? []);
       }
@@ -131,16 +131,17 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
     }
   }
 
+  // ─── UPDATED REGISTRATION HANDLER ───
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
+
     if (_profileImage == null) {
-      _showSnack("Photo is required!");
+      _showSnack("Profile Photo is required!");
       return;
     }
-    if (_selectedServiceId == null ||
-        _stateController.text.isEmpty ||
-        _cityController.text.isEmpty) {
-      _showSnack("Please fill all location and service details");
+
+    if (_selectedServiceId == null) {
+      _showSnack("Please select a service type");
       return;
     }
 
@@ -153,17 +154,15 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
         address: _addressController.text.trim(),
         city: _cityController.text.trim(),
         state: _stateController.text.trim(),
+        adharNo: _adharController.text.trim(), // 👈 Passing Aadhar
         serviceId: _selectedServiceId,
         imageFile: _profileImage,
       );
 
-      if (mounted &&
-          (response.statusCode == 200 || response.statusCode == 201)) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const MainContainer()),
-              (route) => false,
-        );
+      if (mounted && (response.statusCode == 200 || response.statusCode == 201)) {
+        _showSnack("Registered Successfully!");
+        // Redirect to Provider Side Navigation
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) _showSnack("Error: $e");
@@ -173,8 +172,7 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
   }
 
   void _showSnack(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -182,37 +180,36 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Service Provider Registration"),
+        title: const Text("Join as Professional", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(24.0),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
               _buildProfilePicker(),
-              const SizedBox(height: 25),
-              _buildField(_nameController, "Full Name", Icons.person),
-              _buildServiceDropdown(),
-              _buildField(_emailController, "Email Address", Icons.email,
-                  keyboard: TextInputType.emailAddress),
-              _buildField(_phoneController, "Phone Number", Icons.phone,
-                  keyboard: TextInputType.phone),
-              _buildField(_addressController, "Residential Address", Icons.home),
-              const SizedBox(height: 15),
+              const SizedBox(height: 30),
 
-              // ── STATE DROPDOWN ──
+              _buildField(_nameController, "Full Name", Icons.person),
+              _buildField(_adharController, "Aadhar Number (12 Digits)", Icons.badge, keyboard: TextInputType.number), // 👈 Aadhar Field
+              // _buildServiceDropdown(),
+              _buildField(_emailController, "Email Address", Icons.email, keyboard: TextInputType.emailAddress),
+              _buildField(_phoneController, "Phone Number", Icons.phone, keyboard: TextInputType.phone),
+              _buildField(_addressController, "Full Address", Icons.home),
+
+              const SizedBox(height: 15),
               _buildStateDropdown(),
               const SizedBox(height: 15),
-
-              // ── CITY DROPDOWN ──
               _buildCityDropdown(),
               const SizedBox(height: 40),
 
               _buildSubmitButton(),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -220,166 +217,52 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
     );
   }
 
-
+  // ─── UI COMPONENTS ───
 
   Widget _buildStateDropdown() {
     return _buildDropdownWrapper(
       child: _isLoadingStates
-          ? Padding(
-        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.map, color: Colors.blue, size: 20),
-            const SizedBox(width: 10),
-            const SizedBox(
-              height: 14, width: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            const SizedBox(width: 10),
-            // Expanded here prevents the "Loading..." text from pushing right
-            const Expanded(
-              child: Text(
-                "Loading States...",
-                style: TextStyle(color: Colors.grey, fontSize: 13),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      )
+          ? const _LoadingDropdown(text: "Loading States...", icon: Icons.map)
           : DropdownButtonFormField<RegionState>(
-        isExpanded: true, // Takes all available space within the parent
+        isExpanded: true,
         value: _selectedState,
         hint: const Text("Select State", style: TextStyle(fontSize: 14)),
-        // Use a specific menuMaxHeight to prevent menu overflow
-        menuMaxHeight: 300,
+        menuMaxHeight: 350,
         decoration: const InputDecoration(
           border: InputBorder.none,
           prefixIcon: Icon(Icons.map, color: Colors.blue, size: 20),
-          contentPadding: EdgeInsets.zero,
-          isDense: true, // Reduces internal padding
         ),
-        // Ensure the internal DropdownButton icon doesn't push width
-        icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
-        items: _states.map((st) {
-          return DropdownMenuItem(
-            value: st,
-            child: Text(
-              st.name,
-              style: const TextStyle(fontSize: 14),
-              overflow: TextOverflow.ellipsis, // Critical for long names
-            ),
-          );
-        }).toList(),
+        items: _states.map((st) => DropdownMenuItem(value: st, child: Text(st.name, style: const TextStyle(fontSize: 14)))).toList(),
         onChanged: (value) {
           setState(() {
             _selectedState = value;
             _stateController.text = value?.name ?? "";
             _selectedCity = null;
-            _cities = [];
           });
           if (value != null) _loadCities(value.isoCode);
         },
-        validator: (v) => v == null ? "Required" : null,
+        validator: (v) => v == null ? "State required" : null,
       ),
     );
   }
 
-
-
   Widget _buildCityDropdown() {
     return _buildDropdownWrapper(
       child: _isLoadingCities
-          ? const Padding(
-        padding: EdgeInsets.symmetric(vertical: 15),
-        child: Row(
-          children: [
-            Icon(Icons.location_city, color: Colors.blue),
-            SizedBox(width: 12),
-            SizedBox(
-              height: 16, width: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            SizedBox(width: 12),
-            Text("Loading Cities...", style: TextStyle(color: Colors.grey)),
-          ],
-        ),
-      )
+          ? const _LoadingDropdown(text: "Loading Cities...", icon: Icons.location_city)
           : DropdownButtonFormField<RegionCity>(
         isExpanded: true,
         value: _selectedCity,
-        hint: Text(
-          _selectedState == null
-              ? "Select State First"
-              : _cities.isEmpty
-              ? "No Cities Found"
-              : "Select City",
-        ),
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          prefixIcon: Icon(Icons.location_city, color: Colors.blue),
-        ),
-        items: _cities
-            .map((ct) => DropdownMenuItem(value: ct, child: Text(ct.name)))
-            .toList(),
-        onChanged: _selectedState == null
-            ? null
-            : (value) {
+        hint: Text(_selectedState == null ? "Select State First" : "Select City"),
+        decoration: const InputDecoration(border: InputBorder.none, prefixIcon: Icon(Icons.location_city, color: Colors.blue, size: 20)),
+        items: _cities.map((ct) => DropdownMenuItem(value: ct, child: Text(ct.name, style: const TextStyle(fontSize: 14)))).toList(),
+        onChanged: _selectedState == null ? null : (value) {
           setState(() {
             _selectedCity = value;
             _cityController.text = value?.name ?? "";
           });
         },
-        validator: (v) => v == null ? "Please select a city" : null,
-      ),
-    );
-  }
-
-  Widget _buildDropdownWrapper({required Widget child}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: child,
-    );
-  }
-
-  Widget _buildField(TextEditingController controller, String hint, IconData icon,
-      {TextInputType keyboard = TextInputType.text}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15.0),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboard,
-        decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: Colors.blue),
-          hintText: hint,
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
-          ),
-        ),
-        validator: (value) =>
-        (value == null || value.isEmpty) ? "Required" : null,
-      ),
-    );
-  }
-
-  Widget _buildProfilePicker() {
-    return GestureDetector(
-      onTap: _pickImage,
-      child: CircleAvatar(
-        radius: 60,
-        backgroundColor: Colors.blue.shade50,
-        backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
-        child: _profileImage == null
-            ? const Icon(Icons.camera_alt, size: 40, color: Colors.blue)
-            : null,
+        validator: (v) => v == null ? "City required" : null,
       ),
     );
   }
@@ -390,23 +273,73 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
       child: DropdownButtonFormField<dynamic>(
         isExpanded: true,
         value: _selectedServiceId,
-        hint: Text(_isFetchingServices ? "Loading Services..." : "Select Service Type"),
+        hint: Text(_isFetchingServices ? "Fetching Services..." : "Business Category"),
         decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.build_circle, color: Colors.blue),
+          prefixIcon: const Icon(Icons.business_center, color: Colors.blue),
           filled: true,
           fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide.none,
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         ),
-        items: _services
-            .map((service) => DropdownMenuItem<dynamic>(
-            value: service.id, child: Text(service.name ?? "Unknown")))
-            .toList(),
+        items: _services.map((service) => DropdownMenuItem<dynamic>(value: service.id, child: Text(service.name ?? "Unknown"))).toList(),
         onChanged: (value) => setState(() => _selectedServiceId = value),
-        validator: (value) => value == null ? "Field required" : null,
+        validator: (value) => value == null ? "Category required" : null,
       ),
+    );
+  }
+
+  Widget _buildProfilePicker() {
+    return Center(
+      child: Stack(
+        children: [
+          CircleAvatar(
+            radius: 65,
+            backgroundColor: Colors.blue.shade50,
+            backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+            child: _profileImage == null ? const Icon(Icons.person, size: 50, color: Colors.blue) : null,
+          ),
+          Positioned(
+            bottom: 0, right: 0,
+            child: CircleAvatar(
+              backgroundColor: Colors.blue.shade700,
+              radius: 18,
+              child: IconButton(
+                icon: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                onPressed: _pickImage,
+              ),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildField(TextEditingController controller, String hint, IconData icon, {TextInputType keyboard = TextInputType.text}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15.0),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboard,
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon, color: Colors.blue, size: 20),
+          hintText: hint,
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        ),
+        validator: (value) {
+          if (value == null || value.isEmpty) return "Required";
+          if (hint.contains("Aadhar") && value.length != 12) return "Aadhar must be 12 digits";
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _buildDropdownWrapper({required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: child,
     );
   }
 
@@ -415,21 +348,40 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
-        onPressed: (_isLoading || _isFetchingServices || _isLoadingStates)
-            ? null
-            : _handleRegister,
+        onPressed: (_isLoading || _isFetchingServices || _isLoadingStates) ? null : _handleRegister,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blue.shade700,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          elevation: 0,
         ),
         child: _isLoading
-            ? const CircularProgressIndicator(color: Colors.white)
-            : const Text("Register Now",
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold)),
+            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : const Text("Register as Professional", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
       ),
     );
   }
 }
+
+// ─── REUSABLE LOADING WIDGET ───
+class _LoadingDropdown extends StatelessWidget {
+  final String text;
+  final IconData icon;
+  const _LoadingDropdown({required this.text, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blue, size: 20),
+          const SizedBox(width: 12),
+          const SizedBox(height: 14, width: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+          const SizedBox(width: 12),
+          Text(text, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}
+

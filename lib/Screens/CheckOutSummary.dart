@@ -16,6 +16,7 @@ class SummaryScreen extends StatefulWidget {
   final String date;
   final String time;
   final int serviceId;
+  final int  ownerId;
 
   const SummaryScreen({
     super.key,
@@ -26,6 +27,7 @@ class SummaryScreen extends StatefulWidget {
     required this.date,
     required this.time,
     required this.serviceId,
+    required this.ownerId,
   });
 
   @override
@@ -56,11 +58,11 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
   // ── 2. CREATE BOOKING API LOGIC ──
   Future<void> _handleBooking() async {
-    // 1. Show loading spinner on the button
+
     setState(() => _isBooking = true);
 
     try {
-      // 2. Fetch User ID from local session
+      // 2. Fetch User ID from
       final userData = await UserPref.getUser();
       final int userId = userData['userId'] ?? 0;
 
@@ -78,11 +80,12 @@ class _SummaryScreenState extends State<SummaryScreen> {
       // 3. Call the API Service
       // Note: Ensure your ApiService.createBooking uses the correct keys (customer/service)
       final response = await ApiService().createBooking(
-        userId: userId,
+        userId: userId,ownerId: widget.ownerId,
         serviceId: widget.serviceId,
         date: widget.date, // Format: 2026-04-16
         time: widget.time, // Format: 10:30
-        address: "${widget.houseNumber}, ${widget.landmark}",
+
+        address: "${widget.houseNumber}, ${widget.landmark}", professionalId:  widget.professional.id ?? 0,
       );
 
       // Guard: Don't use context if the user navigated away during the await
