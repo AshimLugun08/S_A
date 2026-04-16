@@ -1,15 +1,13 @@
-class serviceListModal {
+class CategoryListModal {
   bool? status;
-  int? page;
-  int? totalPages;
+  String? message;
   List<Data>? data;
 
-  serviceListModal({this.status, this.page, this.totalPages, this.data});
+  CategoryListModal({this.status, this.message, this.data});
 
-  serviceListModal.fromJson(Map<String, dynamic> json) {
+  CategoryListModal.fromJson(Map<String, dynamic> json) {
     status = json['status'];
-    page = json['page'];
-    totalPages = json['total_pages'];
+    message = json['message'];
     if (json['data'] != null) {
       data = <Data>[];
       json['data'].forEach((v) {
@@ -21,8 +19,7 @@ class serviceListModal {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     data['status'] = this.status;
-    data['page'] = this.page;
-    data['total_pages'] = this.totalPages;
+    data['message'] = this.message;
     if (this.data != null) {
       data['data'] = this.data!.map((v) => v.toJson()).toList();
     }
@@ -33,29 +30,14 @@ class serviceListModal {
 class Data {
   int? id;
   String? name;
-  String? description;
-  String? category;
-  String? subcategory;
-  String? image;
-  bool? isActive;
+  Null? description;
 
-  Data(
-      {this.id,
-        this.name,
-        this.description,
-        this.category,
-        this.subcategory,
-        this.image,
-        this.isActive});
+  Data({this.id, this.name, this.description});
 
   Data.fromJson(Map<String, dynamic> json) {
     id = json['id'];
     name = json['name'];
     description = json['description'];
-    category = json['category'];
-    subcategory = json['subcategory'];
-    image = json['image'];
-    isActive = json['is_active'];
   }
 
   Map<String, dynamic> toJson() {
@@ -63,10 +45,6 @@ class Data {
     data['id'] = this.id;
     data['name'] = this.name;
     data['description'] = this.description;
-    data['category'] = this.category;
-    data['subcategory'] = this.subcategory;
-    data['image'] = this.image;
-    data['is_active'] = this.isActive;
     return data;
   }
 }

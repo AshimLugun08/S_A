@@ -36,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // Determine role based on which button or context (Defaulting to customer here)
       final response = await ApiService().sendOtp(
           phone: phone,
-          role: "owner" // Or "service_provider" based on your logic
+          role: "customer" // Or "service_provider" based on your logic
       );
 
       if (response != null && response.data['status'] == true) {

@@ -30,16 +30,13 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
 
   // ── VERIFY OTP LOGIC ──
   Future<void> _handleVerify() async {
-    // 1. UI Cleanup: Hide keyboard as soon as button is pressed
     FocusScope.of(context).unfocus();
 
-    // 2. Concatenation: Cleaner way to join OTP values
     final String fullOtp = [
       _otp1.text, _otp2.text, _otp3.text,
       _otp4.text, _otp5.text, _otp6.text
     ].join().trim();
 
-    // 3. Validation
     if (fullOtp.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please enter the complete 6-digit OTP")),
@@ -50,38 +47,44 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     setState(() => _isLoading = true);
 
     try {
-      debugPrint("📡 [Auth] Verifying OTP for: ${widget.phone}");
-
+      // Calling the API which now returns VerifyOtpresModal?
       final response = await ApiService().verifyOtp(
         phone: widget.phone,
         otp: fullOtp,
       );
 
-      // Guard against context usage after async work
       if (!mounted) return;
 
-      if (response != null && response.data['status'] == true) {
-        // 4. Data Extraction with strict null-safety fallbacks
-        final String role = (response.data['role'] ?? "customer").toString().toLowerCase();
-        final int userId = response.data['user_id'] ?? 0;
-        final String phone = response.data['phone'] ?? widget.phone;
+      if (response != null && response.status == true) {
+        debugPrint("✅ [Auth] Success - UserID: ${response.userId}");
 
-        debugPrint("✅ [Auth] Success - UserID: $userId | Role: $role");
-
-        // 5. Save Persistent Session
-        await UserPref.saveUser(userId, phone, role);
+        // ── SAVE SESSION WITH ALL LOCATION DATA ──
+        // This is crucial for the pre-fill feature to work
+        await UserPref.saveUser(
+          id: response.userId ?? 0,
+          phone: response.phone ?? widget.phone,
+          role: (response.role ?? "customer").toLowerCase(),
+          name: response.name ?? "User",
+          address: response.address, // Added this
+          city: response.city,       // Added this
+          state: response.state,     // Added this
+        );
 
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response.data['message'] ?? "Welcome Back!")),
+          SnackBar(content: Text(response.message ?? "Welcome Back!")),
         );
 
-        // 6. Role-Based Routing
-        // Using a local variable for the widget makes the logic cleaner
-        final Widget targetScreen = (role == "owner" || role == "service_provider")
-            ? const MainContainer()
-            : const MainNavigation();
+        // ── ROLE-BASED ROUTING ──
+        final String role = (response.role ?? "customer").toLowerCase();
+
+        Widget targetScreen;
+        if (role == "owner" || role == "service_provider") {
+          targetScreen = const MainContainer(); // Provider App
+        } else {
+          targetScreen = const MainNavigation(); // Customer App
+        }
 
         Navigator.pushAndRemoveUntil(
           context,
@@ -89,10 +92,9 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
               (route) => false,
         );
       } else {
-        // 7. Backend-driven Error Message
-        final String errorMsg = response?.data['message'] ?? "Invalid OTP entered";
+        // Backend Error Message (e.g., "Invalid OTP")
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMsg)),
+          SnackBar(content: Text(response?.message ?? "Invalid OTP entered")),
         );
       }
     } catch (e) {

@@ -36,7 +36,7 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
   File? _profileImage;
 
   dynamic _selectedServiceId;
-  List<Services> _services = [];
+  List<Data> _services = [];
 
   List<RegionState> _states = [];
   List<RegionCity> _cities = [];
@@ -114,7 +114,7 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
     try {
       final response = await ApiService.fetchServiceList();
       if (response != null && response.status == true) {
-        setState(() => _services = response.services ?? []);
+        setState(() => _services = response.data ?? []);
       }
     } catch (e) {
       debugPrint("❌ Service Fetch Error: $e");

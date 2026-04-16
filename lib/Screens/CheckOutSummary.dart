@@ -1,14 +1,128 @@
 import 'package:flutter/material.dart';
 import 'package:s_a/const/color/colors.dart';
+import 'package:s_a/const/endpoint/ApiService.dart';
+import 'package:s_a/const/endpoint/endpoint.dart';
+import 'package:s_a/const/session/session.dart';
+import 'package:s_a/const/Modal/profectionalListModal.dart' as cat_pro;
+import 'package:s_a/const/Modal/serviceDetailModal.dart' as service_detail;
 
-// ── CUSTOM COLORS ──
 
 
-class SummaryScreen extends StatelessWidget {
-  const SummaryScreen({super.key});
+class SummaryScreen extends StatefulWidget {
+  final cat_pro.Data professional;
+  final String houseNumber;
+  final String landmark;
+  final String addressType;
+  final String date;
+  final String time;
+  final int serviceId;
 
-  // ── 1. THE SUCCESS DIALOG LOGIC ──
-  void _showSuccessDialog(BuildContext context) {
+  const SummaryScreen({
+    super.key,
+    required this.professional,
+    required this.houseNumber,
+    required this.landmark,
+    required this.addressType,
+    required this.date,
+    required this.time,
+    required this.serviceId,
+  });
+
+  @override
+  State<SummaryScreen> createState() => _SummaryScreenState();
+}
+
+class _SummaryScreenState extends State<SummaryScreen> {
+  service_detail.Data? _serviceData;
+  bool _isLoading = true;
+  bool _isBooking = false; // To show loading on the Pay button
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchServiceDetails();
+  }
+
+  // ── 1. FETCH SERVICE DETAILS ──
+  Future<void> _fetchServiceDetails() async {
+    final response = await ApiService.fetchServiceDetails(widget.serviceId);
+    if (mounted) {
+      setState(() {
+        _serviceData = response?.data;
+        _isLoading = false;
+      });
+    }
+  }
+
+  // ── 2. CREATE BOOKING API LOGIC ──
+  Future<void> _handleBooking() async {
+    // 1. Show loading spinner on the button
+    setState(() => _isBooking = true);
+
+    try {
+      // 2. Fetch User ID from local session
+      final userData = await UserPref.getUser();
+      final int userId = userData['userId'] ?? 0;
+
+      if (userId == 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("User session expired. Please login again.")),
+          );
+        }
+        return;
+      }
+
+      debugPrint("📡 [Booking] Initiating API call for User: $userId");
+
+      // 3. Call the API Service
+      // Note: Ensure your ApiService.createBooking uses the correct keys (customer/service)
+      final response = await ApiService().createBooking(
+        userId: userId,
+        serviceId: widget.serviceId,
+        date: widget.date, // Format: 2026-04-16
+        time: widget.time, // Format: 10:30
+        address: "${widget.houseNumber}, ${widget.landmark}",
+      );
+
+      // Guard: Don't use context if the user navigated away during the await
+      if (!mounted) return;
+
+      // 4. Handle the Response
+      if (response != null && response.status == true) {
+        debugPrint("✅ [Booking] Success! ID: ${response.data?.bookingId}");
+
+        // Access bookingId from the nested 'data' object
+        int bookingId = response.data?.bookingId ?? 0;
+
+        // Show the Success Dialog with the new ID
+        _showSuccessDialog(context, bookingId);
+
+      } else {
+        // Show server-side error message (e.g., "Slot already booked")
+        String errorMsg = response?.message ?? "Booking failed. Please try again.";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      debugPrint("💥 [Booking Exception]: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Connection error. Check your internet.")),
+        );
+      }
+    } finally {
+      // 5. Hide loading spinner regardless of success or failure
+      if (mounted) setState(() => _isBooking = false);
+    }
+  }
+
+  // ── 3. SUCCESS DIALOG ──
+  void _showSuccessDialog(BuildContext context, int bookingId) {
+    double price = double.tryParse(_serviceData?.price ?? "0") ?? 0;
+    double grandTotal = price - 100 + 50;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -22,27 +136,21 @@ class SummaryScreen extends StatelessWidget {
               alignment: Alignment.topCenter,
               clipBehavior: Clip.none,
               children: [
-                // The White Ticket Card
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.only(top: 60),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                  ),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
                   child: Column(
                     children: [
                       const Text("Payment Successful", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                      Text("Booking ID: #$bookingId", style: const TextStyle(color: Colors.grey, fontSize: 12)),
                       const SizedBox(height: 25),
                       _dialogInfoRow("Payment mode", "UPI"),
-                      _dialogInfoRow("Total Amount", "₹1249"),
-                      _dialogInfoRow("Pay Date", "Apr 10, 2026"),
-                      _dialogInfoRow("Pay Time", "10:45am"),
+                      _dialogInfoRow("Total Amount", "₹${grandTotal.toStringAsFixed(0)}"),
+                      _dialogInfoRow("Pay Date", widget.date),
+                      _dialogInfoRow("Pay Time", widget.time),
                       const SizedBox(height: 20),
-
-                      _buildTicketSeparator(context), // Perforated line effect
-
-                      // Light Blue Bottom Section
+                      _buildTicketSeparator(context),
                       Container(
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         width: double.infinity,
@@ -51,25 +159,23 @@ class SummaryScreen extends StatelessWidget {
                           borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
                         ),
                         child: Column(
-                          children: const [
-                            Text("Total Pay", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                            SizedBox(height: 5),
-                            Text("₹1249", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                          children: [
+                            const Text("Total Paid", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 5),
+                            Text("₹${grandTotal.toStringAsFixed(0)}",
+                                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primary)),
                           ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Floating Checkmark
                 Positioned(
                   top: -45,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                    child: Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                  child: CircleAvatar(
+                    radius: 45, backgroundColor: Colors.white,
+                    child: CircleAvatar(
+                      radius: 35, backgroundColor: AppColors.primary,
                       child: const Icon(Icons.check, color: Colors.white, size: 40),
                     ),
                   ),
@@ -77,7 +183,9 @@ class SummaryScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 25),
-            _actionButton("Done", () => Navigator.pop(context)),
+            _actionButton("Done", () {
+              Navigator.popUntil(context, (route) => route.isFirst);
+            }),
           ],
         ),
       ),
@@ -86,19 +194,23 @@ class SummaryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    double price = double.tryParse(_serviceData?.price ?? "0") ?? 0;
+    double grandTotal = price - 100 + 50;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         elevation: 0,
-        automaticallyImplyLeading: false,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_circle_left, color: Colors.white, size: 30),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 22),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text("Summary", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
@@ -106,15 +218,16 @@ class SummaryScreen extends StatelessWidget {
             _whiteCard(
               child: Column(
                 children: [
-                  _iconInfoRow(Icons.home, "Plot No. 209, Kavuri Hills, White Filed,\nBangalore, Karnataka\nPh. : +91 000 0000 000"),
+                  _iconInfoRow(Icons.home,
+                      "${widget.addressType}: ${widget.houseNumber}, ${widget.landmark}\nWhite Field, Bangalore"),
                   const Divider(height: 30),
-                  _iconInfoRow(Icons.access_time, "Sat, Apr 10 - 06:30 PM"),
+                  _iconInfoRow(Icons.access_time, "${widget.date} - ${widget.time}"),
                 ],
               ),
             ),
             const SizedBox(height: 20),
 
-            // ── SERVICE CARD (BLUE) ──
+            // ── SERVICE CARD ──
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(color: AppColors.secondary, borderRadius: BorderRadius.circular(25)),
@@ -125,21 +238,29 @@ class SummaryScreen extends StatelessWidget {
                   const SizedBox(height: 15),
                   Row(
                     children: [
-                      ClipRRect(borderRadius: BorderRadius.circular(15), child: Image.asset('assets/images/ss1.jpg', width: 80, height: 80, fit: BoxFit.cover)),
+                      ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: Image.network(
+                            "${ApiEndoint.baseUrl}${_serviceData?.image}",
+                            width: 80, height: 80, fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => Container(width: 80, height: 80, color: Colors.grey[300]),
+                          )
+                      ),
                       const SizedBox(width: 15),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text("Diamond Facial", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          Text("₹1299", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_serviceData?.name ?? "Service", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            Text("₹${_serviceData?.price}", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 15),
-                  _bullet("45 mins"),
-                  _bullet("For all skin types. Pinacolada mask."),
-                  _bullet("6-step process. Includes 10-min massage"),
+                  _bullet("45 mins duration"),
+                  _bullet(_serviceData?.description ?? "Professional salon service at home"),
                 ],
               ),
             ),
@@ -150,10 +271,20 @@ class SummaryScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
               child: Row(
                 children: [
-                  const CircleAvatar(radius: 25, backgroundImage: AssetImage('assets/images/user.png')),
+                  CircleAvatar(
+                      radius: 25,
+                      backgroundImage: widget.professional.image != null
+                          ? NetworkImage("${ApiEndoint.baseUrl}${widget.professional.image}")
+                          : const AssetImage('assets/images/user.png') as ImageProvider
+                  ),
                   const SizedBox(width: 12),
-                  const Expanded(child: Text("Pankaj Kumar (Salon Classic)\n5 yrs Exp | 30 mins", style: TextStyle(fontSize: 13))),
-                  const Icon(Icons.edit_outlined, size: 20),
+                  Expanded(
+                      child: Text(
+                          "${widget.professional.name} (${widget.professional.ownerName})\n${widget.professional.experience} yrs Exp | ${widget.professional.profession}",
+                          style: const TextStyle(fontSize: 13)
+                      )
+                  ),
+                  const Icon(Icons.edit_outlined, size: 20, color: Colors.grey),
                 ],
               ),
             ),
@@ -163,15 +294,15 @@ class SummaryScreen extends StatelessWidget {
             _whiteCard(
               child: Column(
                 children: [
-                  _paymentRow("Item Total", "₹1299"),
+                  _paymentRow("Item Total", "₹${price.toStringAsFixed(0)}"),
                   _paymentRow("Item Discount", "- ₹100", isRed: true),
-                  _paymentRow("Service Free", "₹50"),
+                  _paymentRow("Service Fee", "₹50"),
                   const Divider(height: 25),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Text("GRAND TOTAL", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text("₹1249", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    children: [
+                      const Text("GRAND TOTAL", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text("₹${grandTotal.toStringAsFixed(0)}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ],
@@ -181,39 +312,41 @@ class SummaryScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: Padding(
+      bottomNavigationBar: _isLoading ? null : Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
-        child: _actionButton("Pay ₹1249", () => _showSuccessDialog(context)),
+        child: _isBooking
+            ? const Center(child: CircularProgressIndicator())
+            : _actionButton("Pay ₹${grandTotal.toStringAsFixed(0)}", _handleBooking),
       ),
     );
   }
 
   // ── REUSABLE WIDGETS ──
+
   Widget _whiteCard({required Widget child, EdgeInsets? padding}) {
     return Container(
-      width: double.infinity,
-      padding: padding ?? const EdgeInsets.all(20),
+      width: double.infinity, padding: padding ?? const EdgeInsets.all(20),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(25), border: Border.all(color: Colors.grey.shade200)),
       child: child,
     );
   }
 
   Widget _iconInfoRow(IconData icon, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: Colors.grey, size: 20),
-        const SizedBox(width: 15),
-        Expanded(child: Text(text, style: const TextStyle(color: Colors.grey, height: 1.4))),
-        const Icon(Icons.edit_outlined, size: 20),
-      ],
-    );
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(icon, color: Colors.grey, size: 20),
+      const SizedBox(width: 15),
+      Expanded(child: Text(text, style: const TextStyle(color: Colors.grey, height: 1.4))),
+      const Icon(Icons.edit_outlined, size: 20, color: Colors.grey),
+    ]);
   }
 
   Widget _paymentRow(String label, String value, {bool isRed = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label), Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: isRed ? Colors.red : Colors.black))]),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(label),
+        Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: isRed ? Colors.red : Colors.black))
+      ]),
     );
   }
 
@@ -231,7 +364,10 @@ class SummaryScreen extends StatelessWidget {
   Widget _dialogInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: const TextStyle(color: Colors.grey)), Text(value, style: const TextStyle(fontWeight: FontWeight.bold))]),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(label, style: const TextStyle(color: Colors.grey)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold))
+      ]),
     );
   }
 
@@ -242,8 +378,8 @@ class SummaryScreen extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Row(children: List.generate(30, (i) => Expanded(child: Container(height: 1, color: i % 2 == 0 ? Colors.transparent : Colors.grey.shade300)))),
-          Positioned(left: -20, child: CircleAvatar(radius: 20, backgroundColor: Colors.black.withOpacity(0.5))),
-          Positioned(right: -20, child: CircleAvatar(radius: 20, backgroundColor: Colors.black.withOpacity(0.5))),
+          const Positioned(left: -20, child: CircleAvatar(radius: 20, backgroundColor: AppColors.background)),
+          const Positioned(right: -20, child: CircleAvatar(radius: 20, backgroundColor: AppColors.background)),
         ],
       ),
     );
@@ -252,7 +388,11 @@ class SummaryScreen extends StatelessWidget {
   Widget _bullet(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 5),
-      child: Row(children: [const Icon(Icons.circle, size: 5, color: Colors.grey), const SizedBox(width: 10), Text(text, style: const TextStyle(color: Colors.grey, fontSize: 13))]),
+      child: Row(children: [
+        const Icon(Icons.circle, size: 5, color: Colors.grey),
+        const SizedBox(width: 10),
+        Expanded(child: Text(text, style: const TextStyle(color: Colors.grey, fontSize: 13)))
+      ]),
     );
   }
 }

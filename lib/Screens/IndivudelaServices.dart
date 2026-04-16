@@ -1,66 +1,95 @@
 import 'package:flutter/material.dart';
-import 'package:s_a/Screens/SubServicesScreen.dart';
+import 'package:s_a/Screens/ServiceDetailsScreen.dart';
 import 'package:s_a/const/color/colors.dart';
+import 'package:s_a/const/endpoint/ApiService.dart';
+import 'package:s_a/const/Modal/CatServiceListModal.dart' as cat_service;
+import 'package:s_a/const/endpoint/endpoint.dart';
 
-class SalonService {
-  final String title;
-  final String price;
-  final String image;
+class ServiceListScreen extends StatefulWidget {
+  final int subCategoryId; // The ID passed from the previous screen
+  final String title;      // The title to show in the AppBar
 
-  SalonService({required this.title, required this.price, required this.image});
+  const ServiceListScreen({
+    super.key,
+    required this.subCategoryId,
+    this.title = "Services"
+  });
+
+  @override
+  State<ServiceListScreen> createState() => _ServiceListScreenState();
 }
 
-class ServiceListScreen extends StatelessWidget {
-  const ServiceListScreen({super.key});
+
+
+
+class _ServiceListScreenState extends State<ServiceListScreen> {
+  // Changed type to match your CatServiceListModal Data class
+  List<cat_service.Data> _services = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchServices();
+  }
+
+  // ── 1. FETCH DATA USING THE NEW METHOD ──
+  Future<void> _fetchServices() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      // Calling the specific method you just created
+      final response = await ApiService.fetchCatServiceList(widget.subCategoryId);
+
+      if (mounted) {
+        setState(() {
+          // Use .cast to force the list items into the correct type
+          _services = response?.data?.cast<cat_service.Data>() ?? <cat_service.Data>[];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("🚨 Error fetching services: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // ── DYNAMIC SERVICE DATA ──
-    final List<SalonService> services = [
-      SalonService(title: "Facial for glow", price: "599", image: "assets/images/s1.jpg"),
-      SalonService(title: "Manicure", price: "399", image: "assets/images/s2.jpg"),
-      SalonService(title: "Pedicure", price: "399", image: "assets/images/s3.jpg"),
-      SalonService(title: "Threading", price: "60", image: "assets/images/s4.jpg"),
-    ];
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         elevation: 0,
-        title: const Text(
-          "Salon for Women",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          widget.title,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: services.length,
-        itemBuilder: (context, index) {
-          return _buildServiceCard(context,services[index]);
-        },
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : RefreshIndicator(
+        onRefresh: _fetchServices,
+        child: _services.isEmpty
+            ? const Center(child: Text("No services found in this category."))
+            : ListView.builder(
+          padding: const EdgeInsets.all(20),
+          itemCount: _services.length,
+          itemBuilder: (context, index) {
+            return _buildServiceCard(context, _services[index]);
+          },
+        ),
       ),
     );
   }
 
-  // ── INDIVIDUAL SERVICE CARD ──
-// ── UPDATE: Pass 'context' into the method ──
-  Widget _buildServiceCard(BuildContext context, SalonService service) {
+  // ── 2. INDIVIDUAL SERVICE CARD ──
+  Widget _buildServiceCard(BuildContext context, cat_service.Data service) {
     return InkWell(
-      // ── NAVIGATION LOGIC ──
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const FacialSelectionScreen(),
-          ),
-        );
-      },
-      // Optional: make the ripple match the card corners
+      onTap: () => {Navigator.push(context, MaterialPageRoute(builder: (context) => ServiceDetailScreen(serviceId: service.id ?? 0 ,))
+      )},
       borderRadius: BorderRadius.circular(20),
       child: Container(
         margin: const EdgeInsets.only(bottom: 20),
@@ -69,6 +98,7 @@ class ServiceListScreen extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
+
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
               blurRadius: 15,
@@ -78,74 +108,88 @@ class ServiceListScreen extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // 1. Service Image
+            // --- DYNAMIC IMAGE SECTION ---
             ClipRRect(
               borderRadius: BorderRadius.circular(15),
-              child: Image.asset(
-                service.image,
-                width: 120,
-                height: 110,
+              child: (service.image != null && service.image!.isNotEmpty)
+                  ? Image.network(
+                // Combine Base URL + Relative path
+                "${ApiEndoint.baseUrlImg}${service.image}",
+                width: 90,
+                height: 90,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 120, height: 110, color: Colors.grey[200],
-                  child: const Icon(Icons.image_not_supported),
-                ),
-              ),
+                // Handle cases where the URL is valid but the image fails to load
+                errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
+                // Optional: Add a loading spinner while fetching
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    width: 90, height: 90,
+                    color: AppColors.background,
+                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  );
+                },
+              )
+                  : _buildPlaceholderImage(), // Fallback if string is null/empty
             ),
 
             const SizedBox(width: 15),
 
-            // 2. Service Details
+            // --- SERVICE DETAILS ---
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    service.title,
+                    service.name ?? "Unnamed Service",
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF2E3A8C),
                     ),
                   ),
-                  Container(
-                    margin: const EdgeInsets.only(top: 4, bottom: 12),
-                    height: 2,
-                    width: 40,
-                    color: Colors.grey.withOpacity(0.2),
-                  ),
+                  const SizedBox(height: 4),
                   Text(
-                    "₹${service.price}",
-                    style: const TextStyle(
-                      fontSize: 22,
+                    service.description ?? "Quality service guaranteed",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "₹599",
+                    style: TextStyle(
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
-                  ),
-                  const Text(
-                    "onwards",
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],
               ),
             ),
 
-            // 3. Arrow Action Button
+            // Arrow Icon
             Container(
               padding: const EdgeInsets.all(8),
               decoration: const BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
+                  color: AppColors.primary,
+                  shape: BoxShape.circle
               ),
-              child: const Icon(
-                Icons.arrow_forward,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
             ),
           ],
         ),
       ),
+    );
+  }
+
+// --- PLACEHOLDER HELPER ---
+  Widget _buildPlaceholderImage() {
+    return Container(
+      width: 90,
+      height: 90,
+      color: AppColors.background,
+      child: const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 30),
     );
   }
 }

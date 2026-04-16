@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:s_a/Screens/IndivudelaServices.dart';
 import 'package:s_a/const/color/colors.dart';
+import 'package:s_a/const/endpoint/ApiService.dart';
+// Aliasing to prevent "Data" class name conflicts
+import 'package:s_a/const/Modal/categoryListModal.dart' as cat;
+import 'package:s_a/const/Modal/SubcategoryListModal.dart' as sub;
 
-// --- DATA MODEL ---
-class ServiceItem {
-  final String title;
-  final String image;
+class CategoryGroup {
+  final cat.Data category;
+  final List<sub.Data> subcategories;
 
-  ServiceItem({required this.title, required this.image});
+  CategoryGroup({required this.category, required this.subcategories});
 }
 
 class HomeScreen extends StatefulWidget {
@@ -18,225 +21,110 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // ── 1. SALON SERVICES ──
-  final List<ServiceItem> salonServices = [
-    ServiceItem(title: "Salon for Women", image: "assets/images/salon.png"),
-    ServiceItem(title: "Spa for Women", image: "assets/images/salon2.png"),
-    ServiceItem(title: "Hair & Skin", image: "assets/images/salon3.png"),
-    ServiceItem(title: "Salon for Men", image: "assets/images/salon4.png"),
-    ServiceItem(title: "Massage for Men", image: "assets/images/salon5.png"),
-  ];
+  List<CategoryGroup> _categoryGroups = [];
+  bool _isLoading = true;
 
-  // ── 2. HOME SERVICES ──
-  final List<ServiceItem> homeServices = [
-    ServiceItem(title: "Electrical & Plumbing", image: "assets/images/home.png"),
-    ServiceItem(title: "Cleaning & Pest", image: "assets/images/home2.png"),
-    ServiceItem(title: "Home repairs", image: "assets/images/home3.png"),
-    ServiceItem(title: "Home Painting", image: "assets/images/home4.png"),
-    ServiceItem(title: "Repair Appliances", image: "assets/images/home5.png"),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadHomeData();
+  }
 
-  // ── 3. POPULAR SERVICES (NEW) ──
-  final List<ServiceItem> popularServices = [
-    ServiceItem(title: "Bleach & Dtan", image: "assets/images/pop.png"),
-    ServiceItem(title: "TV Installing", image: "assets/images/pop2.png"),
-    ServiceItem(title: "AC Repair", image: "assets/images/pop3.png"),
-    ServiceItem(title: "Hair Care", image: "assets/images/pop4.png"),
-    ServiceItem(title: "Head Massage", image: "assets/images/pop5.png"),
-  ];
+  // --- 2. API LOGIC ---
+  Future<void> _loadHomeData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      // Step A: Fetch main Categories
+      final categoryResponse = await ApiService.fetchCategoryList();
+
+      if (categoryResponse != null && categoryResponse.data != null) {
+        // Step B: Fetch subcategories in parallel for all categories
+        final List<CategoryGroup> tempGroups = await Future.wait(
+          categoryResponse.data!.map((categoryItem) async {
+            if (categoryItem.id != null) {
+              final subResponse = await ApiService.fetchSubcategories(
+                categoryId: categoryItem.id!,
+              );
+
+              return CategoryGroup(
+                category: categoryItem, // Pass the whole object
+                subcategories: subResponse?.data ?? [],
+              );
+            } else {
+              return CategoryGroup(
+                  category: categoryItem,
+                  subcategories: []
+              );
+            }
+          }),
+        );
+
+        if (mounted) {
+          setState(() {
+            // Only display categories that actually have sub-services
+            _categoryGroups = tempGroups.where((g) => g.subcategories.isNotEmpty).toList();
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint("🚨 Home Data Fetch Error: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildSearchBar(),
-              _buildPromoBanner(),
-              _buildCategorySection("Salon Services", salonServices),
-              _buildCategorySection("Home Services", homeServices),
-              // Updated to use the dynamic popularServices list
-              _buildCategorySection("Popular Services", popularServices),
-              _buildFooterOffer(),
-              const SizedBox(height: 20), // Bottom padding
-            ],
+        child: RefreshIndicator(
+          onRefresh: _loadHomeData,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              children: [
+                _buildHeader(),
+                _buildSearchBar(),
+                _buildPromoBanner(),
+
+                // --- 3. DYNAMIC CONTENT ---
+                _isLoading
+                    ? const Padding(
+                  padding: EdgeInsets.all(50.0),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+                    : _categoryGroups.isEmpty
+                    ? const Padding(
+                  padding: EdgeInsets.all(40.0),
+                  child: Text("No services available right now."),
+                )
+                    : Column(
+                  children: _categoryGroups.map((group) {
+                    return _buildDynamicCategorySection(
+                      group.category.name ?? "Service",
+                      group.subcategories,
+                    );
+                  }).toList(),
+                ),
+
+                _buildFooterOffer(),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // --- UI COMPONENT METHODS ---
+  // --- 4. UI COMPONENTS ---
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Row(
-        children: [
-          const CircleAvatar(
-            radius: 25,
-            backgroundImage: AssetImage('assets/images/user.png'),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("Hello!", style: TextStyle(color: Colors.grey, fontSize: 14)),
-              const Text("Manvi", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.location_on, color: Colors.white, size: 12),
-                    Text(" Bangalore ▾", style: TextStyle(color: Colors.white, fontSize: 12)),
-                  ],
-                ),
-              )
-            ],
-          ),
-          const Spacer(),
-          _iconButton(Icons.notifications_none_outlined),
-          const SizedBox(width: 10),
-          _iconButton(Icons.chat_bubble_outline),
-        ],
-      ),
-    );
-  }
-
-  Widget _iconButton(IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Icon(icon, color: Colors.black54),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  hintText: "Search for Services & Packages",
-                  prefixIcon: Icon(Icons.search, color: Colors.grey),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            height: 50,
-            width: 80,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.tune, color: Colors.white, size: 20),
-                SizedBox(width: 4),
-                Text("Filter", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPromoBanner() {
-    return Container(
-      margin: const EdgeInsets.all(20),
-      height: 140,
-      width: double.infinity,
-      // CRITICAL: This ensures children don't bleed or leave weird gaps at the edges
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Stack(
-        children: [
-          // ── 1. THE IMAGE (Force to edges)  ──
-          Positioned(
-            right: 0, // No right padding
-            top: 0,   // No top padding
-            bottom: 0,// No bottom padding
-            width: 180, // Explicitly set how much of the right side it covers
-            child: Image.asset(
-              'assets/images/banner_bg.png',
-              fit: BoxFit.cover, // Forces image to fill the 140x180 area completely
-              alignment: Alignment.centerRight,
-            ),
-          ),
-
-          // ── 2. THE TEXT (Inside its own padding) ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Let's make a package\njust for you, Manvi!",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    height: 1.2,
-                  ),
-                ),
-                const Spacer(),
-                Row(
-                  children: [
-                    const Text(
-                      "Salon for women",
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.arrow_forward,
-                        color: AppColors.primary,
-                        size: 14,
-                      ),
-                    )
-                  ],
-                )
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategorySection(String title, List<ServiceItem> items) {
+  Widget _buildDynamicCategorySection(String title, List<sub.Data> items) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15, left: 20, right: 20),
       padding: const EdgeInsets.all(15),
@@ -265,20 +153,13 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: items.map((item) {
                 return InkWell(
-                  // ── NAVIGATION TRIGGER ──
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ServiceListScreen(),
-                      ),
-                    );
+                  onTap: () => {
+                    Navigator.push(context, MaterialPageRoute(builder: (context)=>ServiceListScreen(subCategoryId: item.subcategoryId ?? 0, title: item.name ?? "",)))
                   },
-                  borderRadius: BorderRadius.circular(10), // Matches the container shape
                   child: Padding(
-                    padding: const EdgeInsets.only(right: 15, left: 5, top: 5, bottom: 5),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     child: SizedBox(
-                      width: 70,
+                      width: 75,
                       child: Column(
                         children: [
                           Container(
@@ -287,24 +168,23 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: AppColors.background,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Image.asset(
-                              item.image,
-                              height: 40,
-                              width: 40,
-                              // Adding a hero tag here would make a nice transition later!
-                            ),
+                            child: (item.images != null && item.images!.isNotEmpty)
+                                ? Image.network(
+                              // Make sure your BaseURL is prefixed if the API returns relative paths
+                              "${item.images![0]}",
+                              height: 40, width: 40, fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                            )
+                                : const Icon(Icons.category, size: 40, color: Colors.grey),
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            item.title,
+                            item.name ?? "Unnamed",
                             textAlign: TextAlign.center,
-                            maxLines: 2, // Ensures long titles don't break the layout
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
@@ -319,14 +199,101 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 25,
+            backgroundColor: AppColors.primary,
+            child: Icon(Icons.person, color: Colors.white), // Using icon as fallback for missing local assets
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Hello!", style: TextStyle(color: Colors.grey, fontSize: 14)),
+              const Text("Manvi", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(12)),
+                child: const Row(
+                  children: [
+                    Icon(Icons.location_on, color: Colors.white, size: 12),
+                    Text(" Ranchi ▾", style: TextStyle(color: Colors.white, fontSize: 12)),
+                  ],
+                ),
+              )
+            ],
+          ),
+          const Spacer(),
+          _iconButton(Icons.notifications_none_outlined),
+          const SizedBox(width: 10),
+          _iconButton(Icons.chat_bubble_outline),
+        ],
+      ),
+    );
+  }
+
+  Widget _iconButton(IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.grey.shade300)),
+      child: Icon(icon, color: Colors.black54),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+              child: const TextField(
+                decoration: InputDecoration(
+                  hintText: "Search for Services",
+                  prefixIcon: Icon(Icons.search, color: Colors.grey),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            height: 50, width: 80,
+            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.tune, color: Colors.white),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromoBanner() {
+    return Container(
+      margin: const EdgeInsets.all(20),
+      height: 140, width: double.infinity,
+      decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(15)),
+      child: const Padding(
+        padding: EdgeInsets.all(20),
+        child: Text(
+          "Let's make a package\njust for you!",
+          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, height: 1.2),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFooterOffer() {
     return Container(
       margin: const EdgeInsets.all(20),
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.accent,
-        borderRadius: BorderRadius.circular(15),
-      ),
+      decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(15)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -334,14 +301,14 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text("Signup & get 20% OFF", style: TextStyle(fontWeight: FontWeight.bold)),
-              Text("on first salon service", style: TextStyle(fontSize: 12)),
+              Text("on your first service", style: TextStyle(fontSize: 12)),
             ],
           ),
           ElevatedButton(
             onPressed: () {},
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))
             ),
             child: const Text("Signup Now", style: TextStyle(color: Colors.white)),
           )

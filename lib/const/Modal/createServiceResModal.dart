@@ -25,16 +25,23 @@ class createServiceResModal {
 class Data {
   int? serviceId;
   String? name;
+  String? amount;
   String? category;
   String? subcategory;
   Owner? owner;
 
   Data(
-      {this.serviceId, this.name, this.category, this.subcategory, this.owner});
+      {this.serviceId,
+        this.name,
+        this.amount,
+        this.category,
+        this.subcategory,
+        this.owner});
 
   Data.fromJson(Map<String, dynamic> json) {
     serviceId = json['service_id'];
     name = json['name'];
+    amount = json['amount'];
     category = json['category'];
     subcategory = json['subcategory'];
     owner = json['owner'] != null ? new Owner.fromJson(json['owner']) : null;
@@ -44,6 +51,7 @@ class Data {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     data['service_id'] = this.serviceId;
     data['name'] = this.name;
+    data['amount'] = this.amount;
     data['category'] = this.category;
     data['subcategory'] = this.subcategory;
     if (this.owner != null) {

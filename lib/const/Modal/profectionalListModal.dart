@@ -1,15 +1,13 @@
-class serviceListModal {
+class ProffectionalModal {
   bool? status;
-  int? page;
-  int? totalPages;
+  int? count;
   List<Data>? data;
 
-  serviceListModal({this.status, this.page, this.totalPages, this.data});
+  ProffectionalModal({this.status, this.count, this.data});
 
-  serviceListModal.fromJson(Map<String, dynamic> json) {
+  ProffectionalModal.fromJson(Map<String, dynamic> json) {
     status = json['status'];
-    page = json['page'];
-    totalPages = json['total_pages'];
+    count = json['count'];
     if (json['data'] != null) {
       data = <Data>[];
       json['data'].forEach((v) {
@@ -21,8 +19,7 @@ class serviceListModal {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     data['status'] = this.status;
-    data['page'] = this.page;
-    data['total_pages'] = this.totalPages;
+    data['count'] = this.count;
     if (this.data != null) {
       data['data'] = this.data!.map((v) => v.toJson()).toList();
     }
@@ -33,40 +30,56 @@ class serviceListModal {
 class Data {
   int? id;
   String? name;
+  String? profession;
+  String? phone;
+  int? experience;
+  String? address;
   String? description;
-  String? category;
-  String? subcategory;
   String? image;
-  bool? isActive;
+  int? ownerId;
+  String? ownerName;
+  String? ownerPhone;
 
   Data(
       {this.id,
         this.name,
+        this.profession,
+        this.phone,
+        this.experience,
+        this.address,
         this.description,
-        this.category,
-        this.subcategory,
         this.image,
-        this.isActive});
+        this.ownerId,
+        this.ownerName,
+        this.ownerPhone});
 
   Data.fromJson(Map<String, dynamic> json) {
     id = json['id'];
     name = json['name'];
+    profession = json['profession'];
+    phone = json['phone'];
+    experience = json['experience'];
+    address = json['address'];
     description = json['description'];
-    category = json['category'];
-    subcategory = json['subcategory'];
     image = json['image'];
-    isActive = json['is_active'];
+    ownerId = json['owner_id'];
+    ownerName = json['owner_name'];
+    ownerPhone = json['owner_phone'];
   }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = new Map<String, dynamic>();
     data['id'] = this.id;
     data['name'] = this.name;
+    data['profession'] = this.profession;
+    data['phone'] = this.phone;
+    data['experience'] = this.experience;
+    data['address'] = this.address;
     data['description'] = this.description;
-    data['category'] = this.category;
-    data['subcategory'] = this.subcategory;
     data['image'] = this.image;
-    data['is_active'] = this.isActive;
+    data['owner_id'] = this.ownerId;
+    data['owner_name'] = this.ownerName;
+    data['owner_phone'] = this.ownerPhone;
     return data;
   }
 }

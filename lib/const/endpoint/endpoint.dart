@@ -1,5 +1,6 @@
 class ApiEndoint{
   static const String baseUrl = "http://192.168.1.64:8000/api/";
+  static const String baseUrlImg = "http://192.168.1.64:8000/";
 
 
 
@@ -9,5 +10,13 @@ class ApiEndoint{
   static const String login="send-otp";
   static const String verify_otp="verify-otp";
   static const String createProfession="create-professional";
+  static const String addService="add-service";
+  static const String subcategorylist="subcategory-list";
+  static const String user_services="user-services";
+  static const String cateList="category-list";
+  static const String catServiceList="services-list";
+  static const String ServiceDetails="service-detail";
+  static const String profectionalList="professionals";
+  static const String createBooking="bookings/create";
 
 }

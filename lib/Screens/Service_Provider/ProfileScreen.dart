@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:s_a/Screens/LoginScreen.dart';
 import 'package:s_a/Screens/Service_Provider/AddMemberScreen.dart';
 import 'package:s_a/Screens/Service_Provider/EditProfilePage.dart'; // Ensure this path is correct
 import 'package:s_a/Screens/Service_Provider/Myteams.dart';
 import 'package:s_a/const/color/colors.dart';
+import 'package:s_a/const/session/session.dart';
 
 class AccountProfilePage extends StatelessWidget {
   const AccountProfilePage({super.key});
@@ -88,7 +90,8 @@ class AccountProfilePage extends StatelessWidget {
       actions: [
         IconButton(
           onPressed: () {
-            // Logic to switch profile or settings
+           UserPref.logout();
+           Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
           },
           icon: Image.asset("assets/icons/switch.png", height: 24),
         ),
