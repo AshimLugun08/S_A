@@ -283,12 +283,12 @@ class BookingCard extends StatelessWidget {
                   ),
                   child: const Text('Give Feedback', style: TextStyle(color: Colors.white)),
                 ),
-              TextButton(
-                onPressed: () {
-                  // Navigate to Detail Screen
-                },
-                child: const Text('View details', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-              ),
+              // TextButton(
+              //   onPressed: () {
+              //     // Navigate to Detail Screen
+              //   },
+              //   child: const Text('View details', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+              // ),
             ],
           ),
         ],

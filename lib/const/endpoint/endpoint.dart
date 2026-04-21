@@ -1,8 +1,8 @@
 class ApiEndoint{
-  static const String baseUrl = "http://192.168.1.64:8000/api/";
-  static const String baseUrlImg = "http://192.168.1.64:8000/";
-  // static const String baseUrl = "https://sayed.brightcodeapp.com/api/";
-  // static const String baseUrlImg = "https://sayed.brightcodeapp.com/";
+  // static const String baseUrl = "http://192.168.1.64:8000/api/";
+  // static const String baseUrlImg = "http://192.168.1.64:8000/";
+  static const String baseUrl = "https://sayed.brightcodeapp.com/api/";
+  static const String baseUrlImg = "https://sayed.brightcodeapp.com/";
 
 
 
@@ -28,6 +28,8 @@ static const String reviewList="review-list";
 static const String editcustomer="edit-profile";
 static const String userData="get-profile";
 static const String ownerAllreview="owner-reviews";
+static const String add_address="add_user_address";
+static const String get_address="get_user_addresses";
 
 // static const String createProfessional="add-review";
 

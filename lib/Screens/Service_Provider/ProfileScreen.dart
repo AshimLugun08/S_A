@@ -3,6 +3,7 @@ import 'package:s_a/Screens/LoginScreen.dart';
 import 'package:s_a/Screens/Service_Provider/AddMemberScreen.dart';
 import 'package:s_a/Screens/Service_Provider/EditProfilePage.dart';
 import 'package:s_a/Screens/Service_Provider/Myteams.dart';
+import 'package:s_a/Screens/Service_Provider/SupportChatPage.dart';
 import 'package:s_a/const/Modal/ownerReviewListaModal.dart';
 import 'package:s_a/const/Modal/reviewListModal.dart';
 import 'package:s_a/const/color/colors.dart';
@@ -203,7 +204,7 @@ class _AccountProfilePageState extends State<AccountProfilePage> {
       children: [
         _actionItem("assets/icons/developers.png", "My Team", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TeamManagementPage()))),
         _actionItem("assets/icons/worker.png", "Add Member", onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AddProfessionalPage()))),
-        _actionItem("assets/icons/customer-service.png", "Support", onTap: () {}),
+        _actionItem("assets/icons/customer-service.png", "Support", onTap: ()=>Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatPage()))),
       ],
     );
   }

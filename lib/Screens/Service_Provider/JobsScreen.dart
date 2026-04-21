@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:s_a/Screens/Service_Provider/bookingdetails.dart';
 import 'package:s_a/const/Modal/owmerBookingListModal.dart';
 import 'package:s_a/const/color/colors.dart';
 import 'package:s_a/const/endpoint/ApiService.dart';
@@ -116,66 +117,97 @@ class _ManageJobsScreenState extends State<ManageJobsScreen> {
   }
 
   // ── DYNAMIC JOB CARD ──
+// ... existing imports ...
+
+  // ── DYNAMIC JOB CARD (Updated with Navigation) ──
   Widget _buildDynamicJobCard(Data job) {
     bool isOngoing = job.status == "accepted";
     bool isCompleted = job.status == "completed" || job.status == "cancelled";
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: isOngoing ? Border.all(color: AppColors.primary.withOpacity(0.3)) : null,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              CircleAvatar(radius: 25, backgroundColor: AppColors.secondary, child: Text(job.professionalName?[0] ?? "P", style: const TextStyle(color: AppColors.primary))),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(job.professionalName ?? "Staff Assigned", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text(job.serviceName ?? "Service", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  ],
-                ),
-              ),
-              _buildStatusBadge(job.status?.toUpperCase() ?? "NEW", isOngoing ? AppColors.primary : AppColors.secondary, isOngoing ? Colors.white : AppColors.primary),
-            ],
-          ),
-          const Divider(height: 30),
-          _jobDetailRow(Icons.access_time, "Time Slot", "${job.bookingDate} | ${job.bookingTime}"),
-          _jobDetailRow(Icons.location_on_outlined, "Address", job.address ?? "No address"),
-          const SizedBox(height: 20),
-
-          if (!isCompleted)
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      // ─── NAVIGATE TO DETAIL PAGE ───
+      onTap: () {
+        if (job.bookingId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BookingDetailPage(bookingId: job.bookingId!),
+            ),
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: isOngoing ? Border.all(color: AppColors.primary.withOpacity(0.3)) : null,
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+        ),
+        child: Column(
+          children: [
             Row(
               children: [
-                // Left Button (Cancel or Navigate)
-                Expanded(
-                    child: _actionButton(
-                        isOngoing ? "Navigate" : "Cancel",
-                        Colors.grey.shade100,
-                        isOngoing ? Colors.black : Colors.red,
-                        onTap: () => isOngoing ? null : _changeJobStatus(job.bookingId!, "cancelled")
-                    )
+                CircleAvatar(
+                    radius: 25,
+                    backgroundColor: AppColors.secondary,
+                    child: Text(job.professionalName?[0] ?? "P", style: const TextStyle(color: AppColors.primary))
                 ),
                 const SizedBox(width: 12),
-                // Right Button (Start or Finish)
                 Expanded(
-                    child: _actionButton(
-                        isOngoing ? "Finish Job" : "Start Job",
-                        AppColors.primary,
-                        Colors.white,
-                        onTap: () => _changeJobStatus(job.bookingId!, isOngoing ? "completed" : "accepted")
-                    )
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(job.professionalName ?? "Staff Assigned", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(job.serviceName ?? "Service", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                _buildStatusBadge(
+                    job.status?.toUpperCase() ?? "NEW",
+                    isOngoing ? AppColors.primary : AppColors.secondary,
+                    isOngoing ? Colors.white : AppColors.primary
                 ),
               ],
-            )
-        ],
+            ),
+            const Divider(height: 30),
+            _jobDetailRow(Icons.access_time, "Time Slot", "${job.bookingDate} | ${job.bookingTime}"),
+            _jobDetailRow(Icons.location_on_outlined, "Address", job.address ?? "No address"),
+            const SizedBox(height: 20),
+
+            if (!isCompleted)
+              Row(
+                children: [
+                  // Left Button (Cancel or Navigate)
+                  Expanded(
+                      child: _actionButton(
+                          isOngoing ? "Navigate" : "Cancel",
+                          Colors.grey.shade100,
+                          isOngoing ? Colors.black : Colors.red,
+                          onTap: () {
+                            if (isOngoing) {
+                              // Logic for Map navigation if you have it
+                            } else {
+                              _changeJobStatus(job.bookingId!, "cancelled");
+                            }
+                          }
+                      )
+                  ),
+                  const SizedBox(width: 12),
+                  // Right Button (Start or Finish)
+                  Expanded(
+                      child: _actionButton(
+                          isOngoing ? "Finish Job" : "Start Job",
+                          AppColors.primary,
+                          Colors.white,
+                          onTap: () => _changeJobStatus(job.bookingId!, isOngoing ? "completed" : "accepted")
+                      )
+                  ),
+                ],
+              )
+          ],
+        ),
       ),
     );
   }

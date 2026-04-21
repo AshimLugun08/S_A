@@ -34,7 +34,9 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
   bool _isFetchingServices = true;
   bool _isLoadingStates = true;
   bool _isLoadingCities = false;
+
   File? _profileImage;
+  File? _adharImage; // 👈 Added Aadhar Image File
 
   dynamic _selectedServiceId;
   List<Data> _services = [];
@@ -51,7 +53,7 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _stateController = TextEditingController();
-  final TextEditingController _adharController = TextEditingController(); // 👈 Added Aadhar Controller
+  final TextEditingController _adharController = TextEditingController();
 
   @override
   void initState() {
@@ -68,7 +70,7 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
     _addressController.dispose();
     _cityController.dispose();
     _stateController.dispose();
-    _adharController.dispose(); // 👈 Dispose Aadhar
+    _adharController.dispose();
     super.dispose();
   }
 
@@ -123,27 +125,48 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImage({required bool isProfile}) async {
     final pickedFile = await ImagePicker()
         .pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (pickedFile != null) {
-      setState(() => _profileImage = File(pickedFile.path));
+      setState(() {
+        if (isProfile) {
+          _profileImage = File(pickedFile.path);
+        } else {
+          _adharImage = File(pickedFile.path);
+        }
+      });
     }
   }
 
   // ─── UPDATED REGISTRATION HANDLER ───
   Future<void> _handleRegister() async {
-    if (!_formKey.currentState!.validate()) return;
+    debugPrint("🔘 [UI LOG]: Register Button Clicked");
 
+    // 1. Form Validation Check
+    if (!_formKey.currentState!.validate()) {
+      debugPrint("⚠️ [UI LOG]: Form validation failed");
+      return;
+    }
+
+    // 2. Profile Image Check
     if (_profileImage == null) {
+      debugPrint("⚠️ [UI LOG]: Profile Image is missing");
       _showSnack("Profile Photo is required!");
       return;
     }
 
-    if (_selectedServiceId == null) {
-      _showSnack("Please select a service type");
+    // 3. Aadhar Image Check
+    if (_adharImage == null) {
+      debugPrint("⚠️ [UI LOG]: Aadhar Card Image is missing");
+      _showSnack("Aadhar Card Image is required!");
       return;
     }
+
+    // 4. Service ID Check
+
+
+    debugPrint("🚀 [UI LOG]: All local validations passed. Sending data to API...");
 
     setState(() => _isLoading = true);
     try {
@@ -154,17 +177,23 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
         address: _addressController.text.trim(),
         city: _cityController.text.trim(),
         state: _stateController.text.trim(),
-        adharNo: _adharController.text.trim(), // 👈 Passing Aadhar
-        serviceId: _selectedServiceId,
+        adharNo: _adharController.text.trim(),
+        // serviceId: _selectedServiceId,
         imageFile: _profileImage,
+        adharImage: _adharImage,
       );
 
+      debugPrint("📥 [UI LOG]: API execution finished. Status Code: ${response.statusCode}");
+
       if (mounted && (response.statusCode == 200 || response.statusCode == 201)) {
+        debugPrint("✅ [UI LOG]: Registration Successful");
         _showSnack("Registered Successfully!");
-        // Redirect to Provider Side Navigation
         Navigator.pop(context);
+      } else {
+        debugPrint("❌ [UI LOG]: Registration failed with status: ${response.statusCode}");
       }
     } catch (e) {
+      debugPrint("🔥 [UI LOG]: Exception caught in _handleRegister: $e");
       if (mounted) _showSnack("Error: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -181,23 +210,30 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("Join as Professional", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
+        backgroundColor: Colors.white, foregroundColor: Colors.black,
+        elevation: 0, centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildProfilePicker(),
               const SizedBox(height: 30),
 
               _buildField(_nameController, "Full Name", Icons.person),
-              _buildField(_adharController, "Aadhar Number (12 Digits)", Icons.badge, keyboard: TextInputType.number), // 👈 Aadhar Field
-              // _buildServiceDropdown(),
+              _buildField(_adharController, "Aadhar Number (12 Digits)", Icons.badge, keyboard: TextInputType.number),
+
+              // ─── AADHAR IMAGE PICKER ───
+              const Padding(
+                padding: EdgeInsets.only(left: 4, bottom: 8),
+                child: Text("Upload Aadhar Card Image", style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey)),
+              ),
+              _buildAdharPicker(),
+              const SizedBox(height: 15),
+
               _buildField(_emailController, "Email Address", Icons.email, keyboard: TextInputType.emailAddress),
               _buildField(_phoneController, "Phone Number", Icons.phone, keyboard: TextInputType.phone),
               _buildField(_addressController, "Full Address", Icons.home),
@@ -217,7 +253,35 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
     );
   }
 
-  // ─── UI COMPONENTS ───
+  // ─── NEW UI COMPONENTS ───
+
+  Widget _buildAdharPicker() {
+    return GestureDetector(
+      onTap: () => _pickImage(isProfile: false),
+      child: Container(
+        width: double.infinity,
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+        ),
+        child: _adharImage != null
+            ? ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.file(_adharImage!, fit: BoxFit.cover),
+        )
+            : Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.cloud_upload_outlined, size: 40, color: Colors.blue.shade700),
+            const SizedBox(height: 8),
+            const Text("Tap to upload Aadhar Photo", style: TextStyle(color: Colors.grey, fontSize: 13)),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildStateDropdown() {
     return _buildDropdownWrapper(
@@ -267,26 +331,6 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
     );
   }
 
-  Widget _buildServiceDropdown() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15.0),
-      child: DropdownButtonFormField<dynamic>(
-        isExpanded: true,
-        value: _selectedServiceId,
-        hint: Text(_isFetchingServices ? "Fetching Services..." : "Business Category"),
-        decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.business_center, color: Colors.blue),
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        ),
-        items: _services.map((service) => DropdownMenuItem<dynamic>(value: service.id, child: Text(service.name ?? "Unknown"))).toList(),
-        onChanged: (value) => setState(() => _selectedServiceId = value),
-        validator: (value) => value == null ? "Category required" : null,
-      ),
-    );
-  }
-
   Widget _buildProfilePicker() {
     return Center(
       child: Stack(
@@ -304,7 +348,7 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
               radius: 18,
               child: IconButton(
                 icon: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
-                onPressed: _pickImage,
+                onPressed: () => _pickImage(isProfile: true),
               ),
             ),
           )
@@ -362,7 +406,6 @@ class _IdentityTrustScreenState extends State<IdentityTrustScreen> {
   }
 }
 
-// ─── REUSABLE LOADING WIDGET ───
 class _LoadingDropdown extends StatelessWidget {
   final String text;
   final IconData icon;
@@ -384,4 +427,3 @@ class _LoadingDropdown extends StatelessWidget {
     );
   }
 }
-

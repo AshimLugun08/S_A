@@ -2,10 +2,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:s_a/const/Modal/BookingDetailsResModal.dart';
 import 'package:s_a/const/Modal/CatServiceListModal.dart';
 import 'package:s_a/const/Modal/CreateProfessionalResModal.dart';
 import 'package:s_a/const/Modal/SubcategoryListModal.dart';
 import 'package:s_a/const/Modal/VerifyOtpresModal.dart';
+import 'package:s_a/const/Modal/addShedule.dart';
+import 'package:s_a/const/Modal/addressModal.dart';
 import 'package:s_a/const/Modal/categoryListModal.dart';
 import 'package:s_a/const/Modal/createBookngResModal.dart';
 import 'package:s_a/const/Modal/createServiceResModal.dart';
@@ -17,6 +20,7 @@ import 'package:s_a/const/Modal/ownerReviewListaModal.dart';
 import 'package:s_a/const/Modal/ownerServiceListModal.dart';
 import 'package:s_a/const/Modal/profectionalListModal.dart';
 import 'package:s_a/const/Modal/reviewListModal.dart';
+import 'package:s_a/const/Modal/schedule_modal.dart';
 import 'package:s_a/const/Modal/serviceDetailModal.dart';
 import 'package:s_a/const/Modal/serviceListModal.dart';
 import 'package:s_a/const/Modal/userdetailModal.dart';
@@ -123,12 +127,13 @@ class ApiService {
     required String address,
     required String city,
     required String state,
-    required String adharNo, // 👈 Naya parameter add kiya
-    required int serviceId,
+    required String adharNo,
+    // required int serviceId,
     File? imageFile,
+    File? adharImage,
   }) async {
     try {
-      // 1. Data Map taiyaar karein
+      // 1. Prepare Text Data
       Map<String, dynamic> data = {
         "name": name,
         "email": email,
@@ -136,12 +141,12 @@ class ApiService {
         "address": address,
         "city": city,
         "state": state,
-        "adhar_no": adharNo, // 👈 Backend field se match kiya
-        // "service_ids": serviceId,
-        "role": "owner", // Default role
+        "adhar_no": adharNo,
+        // "service_id": serviceId, // Uncommented: ensuring it's sent
+        "role": "owner",
       };
 
-      // 2. Image handle karein agar available ho
+      // 2. Add Profile Image
       if (imageFile != null) {
         data["profile_image"] = await MultipartFile.fromFile(
           imageFile.path,
@@ -149,31 +154,65 @@ class ApiService {
         );
       }
 
+      // 3. Add Aadhar Image
+      if (adharImage != null) {
+        data["adhar_image"] = await MultipartFile.fromFile(
+          adharImage.path,
+          filename: adharImage.path.split('/').last,
+        );
+      }
+
       FormData formData = FormData.fromMap(data);
 
-      // ─── DEBUG: LOG REQUEST DATA ───
-      debugPrint("🚀 [API REQUEST] Registering Owner...");
+      // ─── DEBUG PAYLOAD PRINTER ───
+      debugPrint("\n╔═══════════ API REQUEST PAYLOAD ═══════════");
       debugPrint("║ 🔗 URL: ${ApiEndoint.baseUrl}${ApiEndoint.owner_register}");
-      formData.fields.forEach((field) {
-        debugPrint("║ 📝 Field: ${field.key} = ${field.value}");
-      });
 
-      // 3. POST Request
+      // Print fields (Text data)
+      for (var field in formData.fields) {
+        // Redacting Aadhaar digits in logs for privacy
+        String value = (field.key == "adhar_no") ? "[Aadhar Redacted]" : field.value;
+        debugPrint("║ 📝 Field: ${field.key.padRight(12)} = $value");
+      }
+
+      // Print files (Images data)
+      for (var file in formData.files) {
+        debugPrint("║ 📂 File:  ${file.key.padRight(12)} = ${file.value.filename} (Path: ${file.value.filename})");
+      }
+      debugPrint("╚═══════════════════════════════════════════\n");
+
+      // 4. API Call
       final response = await _dio.post(
         ApiEndoint.owner_register,
         data: formData,
       );
 
-      // ─── DEBUG: LOG RESPONSE DATA ───
-      debugPrint("✅ [API RESPONSE]: ${response.data}");
+      // ─── SUCCESS LOG ───
+      debugPrint("✅ [API SUCCESS]: Status: ${response.statusCode}");
+      debugPrint("📊 [API DATA]: ${response.data}");
 
       return response;
+
     } on DioException catch (e) {
-      debugPrint("❌ [API ERROR]: ${e.message}");
-      debugPrint("║ 📄 Data: ${e.response?.data}");
+      // ─── DETAILED ERROR LOG ───
+      debugPrint("\n❌ [API ERROR DETECTED]");
+      debugPrint("║ Type: ${e.type}");
+      debugPrint("║ Msg:  ${e.message}");
+
+      if (e.response != null) {
+        debugPrint("║ Code: ${e.response?.statusCode}");
+        debugPrint("║ Data: ${e.response?.data}");
+        debugPrint("║ Headers: ${e.response?.headers}");
+      } else {
+        debugPrint("║ Error: Response is null. Check internet or server URL.");
+      }
+      debugPrint("╚═══════════════════════════════════════════\n");
+
       throw _handleError(e);
     }
   }
+
+
 
 
   static Future<serviceListModal?> fetchServiceList() async {
@@ -667,8 +706,9 @@ class ApiService {
     required int ownerId,
     required String date,
     required String time,
+ // Added bookingId as a required parameter
     required int professionalId, // Changed to camelCase for standard Dart style
-    required String address,
+    required int address,
   }) async
   {
     final String url = "${ApiEndoint.baseUrl.trim()}${ApiEndoint.createBooking.trim()}";
@@ -680,9 +720,10 @@ class ApiService {
         "service_id": serviceId,
         "owner_id": ownerId,
         "booking_date": date,
+
         "booking_time": time,
         "professional_id": professionalId,
-        "address": address,
+        "user_address_id": address,
         "status": "pending",
       });
 
@@ -1170,6 +1211,188 @@ class ApiService {
       return null;
     }
   }
+
+
+  Future<AddressResponse?> addUserAddress({
+    required int userId,
+    required String address,
+    required String city,
+    required String state,
+    required String postalCode,
+    required String country,
+  }) async {
+    try {
+      // 1. Create a raw Map first for debugging and payload
+      final Map<String, dynamic> dataMap = {
+        'user_id': userId,
+        'address': address,
+        'city': city,
+        'state': state,
+        'postal_code': postalCode,
+        'country': country,
+      };
+
+      // 2. Print Request Payload as JSON
+      print("🚀 --- API REQUEST PAYLOAD ---");
+      print(const JsonEncoder.withIndent('  ').convert(dataMap));
+      print("-------------------------------");
+
+      // 3. Convert to FormData (Only if your PHP/Node.js backend requires it)
+      final FormData payload = FormData.fromMap(dataMap);
+
+      final response = await _dio.post(
+        ApiEndoint.add_address, // Fixed your 'Endoint' typo
+        data: payload,
+      );
+
+      // 4. PRINT THE RESPONSE
+      print("✅ --- API RESPONSE RECEIVED ---");
+      print("Status Code: ${response.statusCode}");
+      print("Response Data: ${jsonEncode(response.data)}"); // Prints the full JSON response
+      print("---------------------------------");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return AddressResponse.fromJson(response.data);
+      }
+      return null;
+
+    } on DioException catch (e) {
+      print("❌ --- API ERROR ---");
+      print("Message: ${e.message}");
+      if (e.response != null) {
+        print("Error Status: ${e.response?.statusCode}");
+        print("Error Body: ${jsonEncode(e.response?.data)}");
+      }
+      return null;
+    } catch (e) {
+      print("⚠️ GENERAL ERROR: $e");
+      return null;
+    }
+  }
+
+
+  Future<Map<String, dynamic>?> getUserAddresses(int userId) async {
+    try {
+
+print("🚀 Fetching addresses for User ID: $userId");
+
+      final response = await _dio.post(
+        ApiEndoint.get_address, // Replace with your actual endpoint
+         data:FormData.fromMap({
+           "user_id":userId
+         })
+      );
+
+      if (response.statusCode == 200) {
+        return response.data; // Returns the full JSON you provided
+      }
+      return null;
+    } on DioException catch (e) {
+      debugPrint("Fetch Address Error: ${e.message}");
+      return null;
+    }
+  }
+
+
+
+  static Future<addSherdule?> addSchedule({
+    required int professionalId,
+    required String day,
+    required List<String> timeSlots,
+  }) async {
+    print("🚀 [API] Sending exact format for Pro ID: $professionalId");
+
+    try {
+      // 1. FORMATTING THE LIST
+      // This converts ["09:00 AM", "01:00 PM"]
+      // into the string: "09:00 AM, 01:00 PM"
+      String formattedTimeSlots = timeSlots.join(", ");
+
+      // 2. CREATING THE EXACT FORMDATA
+      final FormData formData = FormData.fromMap({
+        "professional_id": professionalId.toString(),
+        "day": day,
+        "time_slots": formattedTimeSlots, // Single string value
+      });
+
+      final response = await _dio.post(
+        'add_schedule',
+        data: formData,
+        options: Options(
+          contentType: 'multipart/form-data',
+        ),
+      );
+
+      print("📡 [API] Server Response: ${response.data}");
+
+      if (response.statusCode == 200) {
+        return addSherdule.fromJson(response.data);
+      }
+    } on DioException catch (e) {
+      print("❌ [API] Error: ${e.message}");
+      if (e.response != null) print("Data: ${e.response?.data}");
+    }
+    return null;
+  }
+
+
+  // Change the return type to List<ScheduleItem>
+  static Future<List<ScheduleItem>> getProfessionalSchedule(int proId) async {
+    print("🚀 [API] Fetching schedule for Professional ID: $proId");
+
+    try {
+      final response = await _dio.post(
+        'get_professional_schedule',
+        // FIXED: Use queryParameters instead of data/FormData for GET requests
+        data: FormData.fromMap({
+          "professional_id": proId
+        }),
+      );
+
+      // DEBUG: Print the raw response so you can see the "double-encoded" string
+      print("📡 [API] Raw Response: ${response.data}");
+
+      if (response.statusCode == 200) {
+        // Ensure we are accessing the 'data' key from your ScheduleResponse wrapper
+        final scheduleResponse = ScheduleResponse.fromJson(response.data);
+
+        if (scheduleResponse.status == true) {
+          print("✅ [API] Successfully parsed ${scheduleResponse.data?.length ?? 0} days");
+          return scheduleResponse.data ?? [];
+        } else {
+          print("⚠️ [API] Server returned status false");
+        }
+      }
+    } on DioException catch (e) {
+      print("❌ [API] Dio Error: ${e.message}");
+      if (e.response != null) {
+        print("❌ [API] Server Error Data: ${e.response?.data}");
+      }
+    } catch (e) {
+      print("❌ [API] General Error: $e");
+    }
+
+    return [];
+  }
+
+
+
+
+  static Future<BookingItem?> getBookingDetails(int id) async {
+    try {
+      final response = await _dio.get(
+        'booking_list_api',
+        queryParameters: {"booking_id": id},
+      );
+      if (response.statusCode == 200 && response.data['status'] == true) {
+        return BookingItem.fromJson(response.data['data'][0]);
+      }
+    } catch (e) {
+      print("API Error: $e");
+    }
+    return null;
+  }
+
 
 
   // GET Request

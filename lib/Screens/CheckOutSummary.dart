@@ -12,7 +12,7 @@ class SummaryScreen extends StatefulWidget {
   final cat_pro.Data professional;
   final String houseNumber;
   final String landmark;
-  final String addressType;
+  final int id;
   final String date;
   final String time;
   final int serviceId;
@@ -23,7 +23,7 @@ class SummaryScreen extends StatefulWidget {
     required this.professional,
     required this.houseNumber,
     required this.landmark,
-    required this.addressType,
+    required this.id,
     required this.date,
     required this.time,
     required this.serviceId,
@@ -85,7 +85,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
         date: widget.date, // Format: 2026-04-16
         time: widget.time, // Format: 10:30
 
-        address: "${widget.houseNumber}, ${widget.landmark}", professionalId:  widget.professional.id ?? 0,
+        address:widget.id, professionalId:  widget.professional.id ?? 0,
       );
 
       // Guard: Don't use context if the user navigated away during the await
@@ -222,7 +222,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
               child: Column(
                 children: [
                   _iconInfoRow(Icons.home,
-                      "${widget.addressType}: ${widget.houseNumber}, ${widget.landmark}\nWhite Field, Bangalore"),
+                      "${widget.id}: ${widget.houseNumber}, ${widget.landmark}\nWhite Field, Bangalore"),
                   const Divider(height: 30),
                   _iconInfoRow(Icons.access_time, "${widget.date} - ${widget.time}"),
                 ],
